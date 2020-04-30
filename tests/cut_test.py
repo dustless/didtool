@@ -15,3 +15,10 @@ class TestCut(unittest.TestCase):
         out, bins = didtool.quantile_cut(x, 4, nan=-1, return_bins=True)
         expect_out = [0, 0, 1, 1, 2, 2, 3, 3, -1]
         self.assertListEqual(list(out), expect_out)
+
+    def test_dt_cut(self):
+        x = [0, 1, 2, 2, 3, 5, 6, 10, np.nan, np.nan]
+        target = [0, 0, 1, 0, 1, 0, 1, 1, 1, 1]
+        out = didtool.dt_cut(x, target, 4)
+        expect_out = [0, 3, 3, 3, 1, 1, 1, 2, 2, 2]
+        self.assertListEqual(list(out), expect_out)

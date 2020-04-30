@@ -1,4 +1,4 @@
 # Install
 ```
-pip install didtools
+pip install didtool
 ```
