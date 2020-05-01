@@ -243,16 +243,14 @@ def cut(x, target=None, method='dt', n_bins=DEFAULT_BINS,
         The computed or specified bins. Only returned when `return_bins=True`.
     """
     if method == 'dt':
-        res = dt_cut(x, target, n_bins=n_bins, return_bins=return_bins,
-                     **kwargs)
-    elif method == 'lgb':
-        res = lgb_cut(x, target, n_bins=n_bins, return_bins=return_bins,
+        return dt_cut(x, target, n_bins=n_bins, return_bins=return_bins,
                       **kwargs)
+    elif method == 'lgb':
+        return lgb_cut(x, target, n_bins=n_bins, return_bins=return_bins,
+                       **kwargs)
     elif method == 'step':
-        res = step_cut(x, n_bins=n_bins, return_bins=return_bins, **kwargs)
+        return step_cut(x, n_bins=n_bins, return_bins=return_bins, **kwargs)
     elif method == 'quantile':
-        res = quantile_cut(x, n_bins=n_bins, return_bins=return_bins, **kwargs)
+        return quantile_cut(x, n_bins=n_bins, return_bins=return_bins, **kwargs)
     else:
         raise Exception("unsupported method `%s`" % method)
-    return res
-
