@@ -12,8 +12,6 @@ def iv_discrete(x, y):
     :param y: numpy.array
     :return: iv
     """
-    if np.any(np.isnan(x)):
-        x = fillna(x, -999)
     n0 = np.sum(y == 0)
     n1 = np.sum(y == 1)
     n0_group = np.zeros(np.unique(x).shape)
@@ -44,6 +42,24 @@ def iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt'):
     """
     x_bin = cut(x, y, method=cut_method, n_bins=n_bins)
     return iv_discrete(x_bin, y)
+
+
+def iv(x, y, is_continuous=True):
+    """
+    Compute IV for continuous feature.
+    Parameters
+    ----------
+    x : array-like
+    y: array-like
+    is_continuous : whether x is continuous, optional (default=True)
+
+    Returns
+    -------
+    (name, iv) : IV of feature x
+    """
+    if is_continuous or len(np.unique(x)) / len(x) > 0.5:
+        return iv_continuous(x, y)
+    return iv_discrete(x, y)
 
 
 def psi(expect_score, actual_score, n_bins=DEFAULT_BINS):

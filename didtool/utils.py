@@ -22,6 +22,23 @@ def to_ndarray(s, dtype=None):
     return arr
 
 
+def is_categorical(series):
+    """
+    Check whether an array-like is a Categorical instance.
+
+    Parameters
+    ----------
+    series: array-like
+        The array-like to check.
+
+    Returns
+    -------
+    boolean
+        Whether or not the array-like is of a Categorical instance.
+    """
+    return pd.api.types.is_categorical(series)
+
+
 def fillna(data, by=-1):
     """
     Return a new array with NA/NaN value replaced by `by`

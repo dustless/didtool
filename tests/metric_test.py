@@ -4,17 +4,20 @@ import didtool
 
 
 class TestMetric(unittest.TestCase):
-    def test_iv_discrete(self):
-        x = np.array([0, 1, 5, 5, 3, 4, 4, 4, 4, np.nan])
-        y = np.array([0, 0, 1, 0, 1, 0, 1, 1, 1, 1])
-        iv = didtool.iv_discrete(x, y)
-        self.assertAlmostEqual(iv, 0.5972531564093516)
+    def test_iv(self):
+        x = np.array(
+            [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4,
+             5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9,
+             10, 10, 10, 11, 11, 11, np.nan, np.nan, np.nan])
+        y = np.array(
+            [0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1,
+             0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1,
+             0, 0, 0, 0, 0, 1, 0, 1, 1])
+        iv1 = didtool.iv(x, y, False)
+        iv2 = didtool.iv(x, y, True)
 
-    def test_iv_continuous(self):
-        x = np.array([0, 1, 5, 5, 3, 4, 4, 4, 4, np.nan])
-        y = np.array([0, 0, 1, 0, 1, 0, 1, 1, 1, 1])
-        iv = didtool.iv_continuous(x, y)
-        self.assertAlmostEqual(iv, 0.9776155056983381)
+        self.assertAlmostEqual(iv1, 1.334705486550453)
+        self.assertAlmostEqual(iv2, 1.4057157347824798)
 
     def test_psi(self):
         x = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
