@@ -19,6 +19,6 @@ class TestStats(unittest.TestCase):
                        0, 0, 0, 0, 0, 1, 0, 1, 1]
         })
         df["x2"] = df["x2"].astype("category")
-        iv_df = didtool.iv_all(df, target="target")
-        self.assertAlmostEqual(iv_df["iv"][0], 1.405716, places=6)
-        self.assertAlmostEqual(iv_df["iv"][1], 1.398188, places=6)
+        iv_df = didtool.iv_all(df[['x1', 'x2']], df["target"])
+        self.assertAlmostEqual(iv_df["iv"]['x1'], 1.405716, places=6)
+        self.assertAlmostEqual(iv_df["iv"]['x2'], 1.398188, places=6)

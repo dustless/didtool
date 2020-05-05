@@ -58,3 +58,10 @@ def fillna(data, by=-1):
     mask = pd.isna(out)
     out[mask] = by
     return out
+
+
+def unpack_tuple(x):
+    if len(x) == 1:
+        return x[0]
+    else:
+        return x

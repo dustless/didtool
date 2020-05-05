@@ -8,9 +8,14 @@ from .cut import DEFAULT_BINS, cut
 def iv_discrete(x, y):
     """
     Compute IV for discrete feature.
-    :param x: numpy.array
-    :param y: numpy.array
-    :return: iv
+    Parameters
+    ----------
+    x : array-like
+    y: array-like
+
+    Returns
+    -------
+    iv : IV of feature x
     """
     n0 = np.sum(y == 0)
     n1 = np.sum(y == 1)
@@ -47,6 +52,7 @@ def iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt'):
 def iv(x, y, is_continuous=True):
     """
     Compute IV for continuous feature.
+
     Parameters
     ----------
     x : array-like
@@ -65,6 +71,7 @@ def iv(x, y, is_continuous=True):
 def psi(expect_score, actual_score, n_bins=DEFAULT_BINS):
     """
     Compute IV for continuous feature.
+
     Parameters
     ----------
     expect_score : array-like

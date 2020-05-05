@@ -14,7 +14,6 @@ def iv_with_name(x, y, name='feature'):
     x : array-like
     y: array-like
     name: feature name
-    is_continuous : whether x is continuous, optional (default=True)
 
     Returns
     -------
@@ -25,23 +24,28 @@ def iv_with_name(x, y, name='feature'):
     return [name, iv_value]
 
 
-def iv_all(frame, target='target', exclude_cols=None):
-    """get iv of features in frame
+def iv_all(frame, y, exclude_cols=None):
+    """
+    Compute IV of features in frame
 
-    Args:
-        frame (DataFrame): frame that will be calculate quality
-        target (str): the target's name in frame
-        exclude_cols
+    Parameters
+    ----------
+    frame : DataFrame
+        frame that will be calculate iv
+    y : array-like
+        the target's value
+    exclude_cols: list, optional(default None)
+        columns that do not need to calculate iv
 
-    Returns:
-        DataFrame: quality of features with the features' name as row name
+    Returns
+    -------
+    DataFrame: iv of features with the features' name as row index
     """
     res = []
     pool = Pool(cpu_count())
 
-    y = frame[target]
     for name, x in frame.iteritems():
-        if name != target or (exclude_cols and name not in exclude_cols):
+        if not (exclude_cols and name in exclude_cols):
             r = pool.apply_async(iv_with_name, args=(x, y), kwds={'name': name})
             res.append(r)
 
@@ -53,4 +57,4 @@ def iv_all(frame, target='target', exclude_cols=None):
     return pd.DataFrame(rows, columns=["feature", "iv"]).sort_values(
         by='iv',
         ascending=False,
-    )
+    ).set_index('feature')
