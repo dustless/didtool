@@ -98,4 +98,4 @@ class TestSelector(unittest.TestCase):
         # selector.plot_missing()
         # selector.plot_iv()
         # selector.plot_correlated(plot_all=True)
-        # selector.plot_importance()
+        selector.plot_importance()

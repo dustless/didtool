@@ -1,0 +1,73 @@
+import unittest
+import pandas as pd
+import numpy as np
+
+from didtool.model import LGBModelSingle, LGBModelStacking
+
+
+class TestModel(unittest.TestCase):
+    def test_model_single(self):
+        df = pd.read_csv('samples.csv')
+        df['x5'] = df['x5'].astype('category')
+
+        features = [col for col in df.columns.values
+                    if col not in ('target', 'random')]
+        model_param = dict(
+            boosting_type='gbdt', n_estimators=100, learning_rate=0.1,
+            max_depth=5, feature_fraction=1, bagging_fraction=1, reg_alpha=1,
+            reg_lambda=1, min_data_in_leaf=10, random_state=27
+        )
+        m = LGBModelSingle(df, features, 'target', './test_out', model_param)
+
+        # test split_data
+        m.split_data(df.index < 600, (df.index >= 600) & (df.index < 800))
+        self.assertEqual(m.data[m.data.group == 0].shape[0], 600)
+        self.assertEqual(m.data[m.data.group == 1].shape[0], 200)
+        self.assertEqual(m.data[m.data.group == 2].shape[0], 200)
+
+        # test train
+        m.train(save_learn_curve=True)
+
+        # test evaluate
+        result = m.evaluate()
+        print(result)
+
+        # test save_feature_importance
+        m.save_feature_importance()
+
+        # test export
+        m.export()
+
+    def test_model_stacking(self):
+        df = pd.read_csv('samples.csv')
+        df['x5'] = df['x5'].astype('category')
+
+        features = [col for col in df.columns.values
+                    if col not in ('target', 'random')]
+        model_param = dict(
+            boosting_type='gbdt', n_estimators=100, learning_rate=0.1,
+            max_depth=5, feature_fraction=1, bagging_fraction=1, reg_alpha=1,
+            reg_lambda=1, min_data_in_leaf=10, random_state=27
+        )
+        m = LGBModelStacking(df, features, 'target', './test_out', model_param,
+                             n_fold=3)
+
+        # test split_data
+        m.split_data(df.index >= 900)
+        self.assertEqual(m.data[m.data.fold == 0].shape[0], 300)
+        self.assertEqual(m.data[m.data.fold == 1].shape[0], 300)
+        self.assertEqual(m.data[m.data.fold == 2].shape[0], 300)
+        self.assertEqual(m.data[m.data.fold == -1].shape[0], 100)
+
+        # test train
+        m.train(save_learn_curve=True)
+
+        # test evaluate
+        result = m.evaluate()
+        print(result)
+
+        # test save_feature_importance
+        m.save_feature_importance()
+
+        # test export
+        m.export()
