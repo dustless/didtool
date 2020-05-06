@@ -95,3 +95,7 @@ class TestSelector(unittest.TestCase):
         # importance may change across runs
         self.assertSetEqual(set(drop_cols['low_importance']),
                             {'x1', 'x6', 'x20', 'x8', 'x5'})
+        # selector.plot_missing()
+        # selector.plot_iv()
+        # selector.plot_correlated(plot_all=True)
+        # selector.plot_importance()

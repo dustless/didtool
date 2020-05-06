@@ -147,34 +147,33 @@ class Selector:
                      any(upper[column].abs() > corr_threshold)]
 
         # Dataframe to hold correlated pairs
-        record_collinear = pd.DataFrame(
+        record_correlated = pd.DataFrame(
             columns=['drop_feature', 'corr_feature', 'corr_value'])
 
         # Iterate through the columns to drop to record pairs of
         # correlated features
         sorted(corr_cols, key=lambda x: self.iv_stats['iv'][x], reverse=True)
         for col in corr_cols:
-            if col in record_collinear["drop_feature"].values:
+            if col in record_correlated["drop_feature"].values:
                 continue
             # Find the correlated features
             corr_features = list(
                 upper.index[upper[col].abs() > corr_threshold])
 
             for feature in corr_features:
-                if feature in record_collinear["drop_feature"].values:
+                if feature in record_correlated["drop_feature"].values:
                     continue
                 # Record the information (need a temp df for now)
-                temp_df = pd.DataFrame({
-                    'drop_feature': [feature],
-                    'corr_feature': [col],
-                    'corr_value': [corr_matrix.loc[col, feature]]
-                })
+                temp_df = pd.DataFrame(
+                    [[feature, col, corr_matrix.loc[col, feature]]],
+                    columns=record_correlated.columns
+                )
                 # Add to dataframe
-                record_collinear = record_collinear.append(temp_df,
-                                                           ignore_index=True)
+                record_correlated = pd.concat([record_correlated, temp_df],
+                                              ignore_index=True)
 
-        self.record_correlated = record_collinear
-        to_drop = list(record_collinear["drop_feature"].values)
+        self.record_correlated = record_correlated
+        to_drop = list(record_correlated["drop_feature"].values)
         self.drop_cols['correlated'] = to_drop
         self.data = self.data.drop(columns=to_drop)
 
@@ -248,7 +247,7 @@ class Selector:
             {'feature': feature_names, 'importance': feature_importance_values})
 
         # Sort features according to importance
-        importance_df = importance_df.\
+        importance_df = importance_df. \
             sort_values('importance', ascending=False).reset_index(drop=True)
 
         # Normalize the feature importances to add up to one
@@ -302,24 +301,18 @@ class Selector:
         plt.figure(figsize=(10, 6))
         ax = plt.subplot()
 
-        # Need to reverse the index to plot most important on top
+        # Need to reverse the index to plot highest iv on top
         # There might be a more efficient method to accomplish this
         ax.barh(list(reversed(list(self.iv_stats.index[:top_n]))),
-                self.iv_stats['iv'][:top_n],
+                list(reversed(list(self.iv_stats['iv'][:top_n]))),
                 align='center', edgecolor='k')
-
-        # Set the yticks and labels
-        ax.set_yticks(
-            list(reversed(list(self.importance_stats.index[:top_n]))))
-        ax.set_yticklabels(self.importance_stats['feature'][:top_n],
-                           size=12)
 
         # Plot labeling
         plt.xlabel('IV', size=16)
         plt.title('IV Of Features', size=18)
         plt.show()
 
-    def plot_collinear(self, plot_all=False):
+    def plot_correlated(self, plot_all=False):
         """
         Heatmap of the correlation values.
         If plot_all = True plots all the correlations otherwise plots only
@@ -372,8 +365,9 @@ class Selector:
         ax.set_xticklabels(list(corr_matrix_plot.columns),
                            size=int(160 / corr_matrix_plot.shape[1]))
         plt.title(title, size=14)
+        plt.show()
 
-    def plot_feature_importance(self, top_n=20, threshold=None):
+    def plot_importance(self, top_n=20):
         """
         Plots `top_n` most important features and the cumulative importance
         of features.
@@ -384,9 +378,6 @@ class Selector:
         --------
         top_n : int, default = 20
             Number of most important features to plot.
-
-        threshold : float, between 0 and 1 default = None
-            Threshold for printing information about cumulative importances
         """
 
         if self.importance_stats is None:
@@ -406,15 +397,9 @@ class Selector:
 
         # Need to reverse the index to plot most important on top
         # There might be a more efficient method to accomplish this
-        ax.barh(list(reversed(list(self.importance_stats.index[:top_n]))),
-                self.importance_stats['normalized_importance'][:top_n],
+        ax.barh(list(reversed(list(self.importance_stats.feature[:top_n]))),
+                list(reversed(list(self.importance_stats.normalized[:top_n]))),
                 align='center', edgecolor='k')
-
-        # Set the yticks and labels
-        ax.set_yticks(
-            list(reversed(list(self.importance_stats.index[:top_n]))))
-        ax.set_yticklabels(self.importance_stats['feature'][:top_n],
-                           size=12)
 
         # Plot labeling
         plt.xlabel('Normalized Importance', size=16)
