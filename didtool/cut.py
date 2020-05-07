@@ -141,7 +141,7 @@ def dt_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
         return out
 
 
-def lgb_cut(x, target, n_bins=DEFAULT_BINS, min_bin=0.01,
+def lgb_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
             return_bins=False):
     """
     Cut values into discrete intervals by lightgbm.
@@ -157,6 +157,7 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, min_bin=0.01,
         Defines the number of equal-width bins in the range of `x`. The
         range of `x` is extended by .1% on each side to include the minimum
         and maximum values of `x`.
+    nan: Replace NA values with `nan` in the result if `nan` is not None.
     min_bin : float, optional (default=0.01)
         The minimum fraction of samples required to be in a bin.
     return_bins : bool, default False
@@ -171,7 +172,9 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, min_bin=0.01,
     bins : numpy.ndarray
         The computed or specified bins. Only returned when `return_bins=True`.
     """
-    x = to_ndarray(x).reshape(-1, 1)
+    x = to_ndarray(x)
+    target = to_ndarray(target)
+    mask = np.isnan(x)
     min_child_samples = math.ceil(min_bin * len(x))
 
     tree = lightgbm.LGBMClassifier(
@@ -180,10 +183,7 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, min_bin=0.01,
         min_child_samples=min_child_samples,
         random_state=27
     )
-    tree.fit(x, target)
-    out = tree.predict(x, pred_leaf=True)
-    if not return_bins:
-        return out
+    tree.fit(x[~mask].reshape((-1, 1)), target[~mask])
 
     model = tree.booster_.dump_model()
     tree_infos = model['tree_info']
@@ -204,7 +204,15 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, min_bin=0.01,
     min_val = min_val - max(np.abs(min_val) * 0.001, 0.001)
     max_val = max_val + max(np.abs(max_val) * 0.001, 0.001)
     bins = np.array([min_val] + list(bins) + [max_val])
-    return out, bins
+
+    out, bins = pd.cut(x, bins, labels=False, retbins=True)
+    if nan is not None:
+        out = fillna(out, nan).astype(np.int)
+
+    if return_bins:
+        return out, bins
+    else:
+        return out
 
 
 def cut(x, target=None, method='dt', n_bins=DEFAULT_BINS,

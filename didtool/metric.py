@@ -6,13 +6,62 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, \
     average_precision_score
 
-from .utils import fillna
 from .cut import DEFAULT_BINS, cut
+
+
+def probability(y, group_mask=None):
+    """
+    get probability of target by mask of a group
+
+    Parameters
+    ----------
+    y: array-like
+        binary labels
+
+    group_mask : array of bool
+        mask of a group
+
+    Returns
+    -------
+    prob1 : float
+        counts of 1 in group / counts of 1 in total
+    prob0 : float
+        counts of 0 in group / counts of 0 in total
+    """
+    if group_mask is None:
+        return 1, 1
+
+    total_0 = max((y == 0).sum(), 0.5)
+    total_1 = max((y == 1).sum(), 0.5)
+
+    group_y = y[group_mask]
+    group_0 = max((group_y == 0).sum(), 0.5)
+    group_1 = max((group_y == 1).sum(), 0.5)
+
+    prob1 = group_1 / total_1
+    prob0 = group_0 / total_0
+
+    return prob1, prob0
+
+
+def woe(prob1, prob0):
+    """
+    get WOE of a group
+
+    Args:
+        prob1: the probability of grouped 1 in total 1
+        prob0: the probability of grouped 0 in total 0
+
+    Returns:
+        number: woe value
+    """
+    return np.log(prob1 / prob0)
 
 
 def iv_discrete(x, y):
     """
     Compute IV for discrete feature.
+
     Parameters
     ----------
     x : array-like
@@ -22,19 +71,14 @@ def iv_discrete(x, y):
     -------
     iv : IV of feature x
     """
-    n0 = np.sum(y == 0)
-    n1 = np.sum(y == 1)
-    n0_group = np.zeros(np.unique(x).shape)
-    n1_group = np.zeros(np.unique(x).shape)
-    for i in range(len(np.unique(x))):
-        n0_group[i] = np.maximum(len(y[(x == np.unique(x)[i]) & (y == 0)]), 0.5)
-        n1_group[i] = np.maximum(len(y[(x == np.unique(x)[i]) & (y == 1)]), 0.5)
-    iv = np.sum((n0_group / n0 - n1_group / n1) *
-                np.log((n0_group / n0) / (n1_group / n1)))
-    return iv
+    iv_value = 0
+    for v in np.unique(x):
+        prob1, prob0 = probability(y, group_mask=(x == v))
+        iv_value += (prob1 - prob0) * woe(prob1, prob0)
+    return iv_value
 
 
-def iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt'):
+def iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt', **kwargs):
     """
     Compute IV for continuous feature.
     Parameters
@@ -50,11 +94,11 @@ def iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt'):
     -------
     iv : IV of feature x
     """
-    x_bin = cut(x, y, method=cut_method, n_bins=n_bins)
+    x_bin = cut(x, y, method=cut_method, n_bins=n_bins, **kwargs)
     return iv_discrete(x_bin, y)
 
 
-def iv(x, y, is_continuous=True):
+def iv(x, y, is_continuous=True, **kwargs):
     """
     Compute IV for continuous feature.
 
@@ -69,11 +113,11 @@ def iv(x, y, is_continuous=True):
     (name, iv) : IV of feature x
     """
     if is_continuous or len(np.unique(x)) / len(x) > 0.5:
-        return iv_continuous(x, y)
+        return iv_continuous(x, y, **kwargs)
     return iv_discrete(x, y)
 
 
-def psi(expect_score, actual_score, n_bins=DEFAULT_BINS):
+def psi(expect_score, actual_score, n_bins=DEFAULT_BINS, plot=False):
     """
     Compute IV for continuous feature.
 
@@ -83,10 +127,12 @@ def psi(expect_score, actual_score, n_bins=DEFAULT_BINS):
     actual_score: array-like
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`.
+    plot : bool
+        whether plot expect and actual distributions
 
     Returns
     -------
-    psi : float
+    psi_value : float
     """
     expect_cut, cut_bins = pd.cut(expect_score, n_bins, retbins=True)
     expect = expect_cut.value_counts() / np.sum(expect_cut.value_counts())
@@ -97,8 +143,14 @@ def psi(expect_score, actual_score, n_bins=DEFAULT_BINS):
     actual[actual == 0] = 1e-10
     expect[expect == 0] = 1e-10
 
-    psi = np.sum((actual - expect) * np.log(actual / expect))
-    return psi
+    psi_value = np.sum((actual - expect) * np.log(actual / expect))
+    if plot:
+        df = pd.DataFrame({"expect": expect, "actual": actual})
+        df.plot(kind="bar")
+        plt.legend(loc="best")
+        plt.title("psi={}".format(psi))
+        plt.show()
+    return psi_value
 
 
 def save_roc(y_true, y_pred, out_path, file_name='roc.png'):
@@ -144,10 +196,10 @@ def compare_roc(y_true_list, y_pred_list, model_name_list, out_path,
     Parameters
     ----------
 
-    y_true_list : array of array, shape = [n_curve, n_samples]
+    y_true_list : list of array, shape = [n_curve, n_samples]
         True binary labels.
 
-    y_pred_list : array of array, shape = [n_curve, n_samples]
+    y_pred_list : list of array, shape = [n_curve, n_samples]
         target scores, predicted by estimator
 
     model_name_list : array of str
@@ -164,8 +216,9 @@ def compare_roc(y_true_list, y_pred_list, model_name_list, out_path,
         fpr, tpr, _ = roc_curve(y_true_list[i], y_pred_list[i])
         ks_value = np.max(tpr - fpr)
         auc_value = auc(fpr, tpr)
-        plt.plot(fpr, tpr, lw=1, label='%s-AUC(%.3f)-KS(%.3f)' %
-                 (model_name_list[i], auc_value, ks_value))
+        label = '%s-AUC(%.3f)-KS(%.3f)' % \
+                (model_name_list[i], auc_value, ks_value)
+        plt.plot(fpr, tpr, lw=1, label=label)
 
     plt.ylim([0.0, 1.0])
     plt.xlim([0.0, 1.0])

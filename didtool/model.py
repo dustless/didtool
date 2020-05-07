@@ -5,7 +5,7 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 from sklearn.metrics.ranking import roc_auc_score
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, train_test_split
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
 import matplotlib.pyplot as plt
@@ -103,7 +103,7 @@ class LGBModelSingle:
 
     def split_data(self, train_mask, val_mask):
         """
-        Split data set into train/val/test part.
+        Split data set into train/val/test part by specified masks.
         Add a group column into `self.data`:
             - 0: training data set
             - 1: validation data set
@@ -121,6 +121,34 @@ class LGBModelSingle:
         self.data.loc[train_mask, "group"] = 0
         self.data.loc[val_mask, "group"] = 1
         self.data.loc[~(train_mask | val_mask), "group"] = 2
+
+    def split_data_random(self, train_size=0.6, val_size=0.2):
+        """
+        Split data set into train/val/test part randomly
+
+        Add a group column into `self.data`:
+            - 0: training data set
+            - 1: validation data set
+            - 2: testing data set
+
+        Parameters
+        --------
+        train_size : float, 0.0~1.0
+            the proportion of the dataset to include in the train split
+
+        val_size : float, 0.0~1.0
+            the proportion of the dataset to include in the validation split
+        """
+        train, val = train_test_split(
+            self.data[self.target], train_size=train_size,
+            random_state=1, stratify=self.data[self.target])
+        val, _ = train_test_split(val, train_size=val_size / (1 - train_size),
+                                  random_state=1, stratify=val)
+        train_mask = np.zeros(self.data.shape[0], dtype=bool)
+        train_mask[train.index] = True
+        val_mask = np.zeros(self.data.shape[0], dtype=bool)
+        val_mask[val.index] = True
+        self.split_data(train_mask, val_mask)
 
     def train(self, early_stopping_rounds=20, eval_metric="binary_logloss",
               save_learn_curve=False):
@@ -189,9 +217,10 @@ class LGBModelSingle:
         print('val AUC: %.5f' % roc_auc_score(
             result[result.group == 1][self.target],
             result[result.group == 1]['prob']))
-        print('test AUC: %.5f' % roc_auc_score(
-            result[result.group == 2][self.target],
-            result[result.group == 2]['prob']))
+        if any(result.group == 2):
+            print('test AUC: %.5f' % roc_auc_score(
+                result[result.group == 2][self.target],
+                result[result.group == 2]['prob']))
         return result
 
     def save_feature_importance(self):

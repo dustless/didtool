@@ -22,3 +22,8 @@ class TestStats(unittest.TestCase):
         iv_df = didtool.iv_all(df[['x1', 'x2']], df["target"])
         self.assertAlmostEqual(iv_df["iv"]['x1'], 1.405716, places=6)
         self.assertAlmostEqual(iv_df["iv"]['x2'], 1.398188, places=6)
+
+        iv_df = didtool.iv_all(df[['x1', 'x2']], df["target"],
+                               cut_method='step')
+        self.assertAlmostEqual(iv_df["iv"]['x1'], 1.434012, places=6)
+        self.assertAlmostEqual(iv_df["iv"]['x2'], 1.398188, places=6)

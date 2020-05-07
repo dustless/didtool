@@ -27,6 +27,6 @@ class TestCut(unittest.TestCase):
         x = [0, 1, 2, 2, 3, 5, 6, 10, np.nan, np.nan]
         target = [0, 0, 1, 0, 1, 0, 1, 1, 1, 1]
         out, bins = didtool.lgb_cut(x, target, 4, return_bins=True)
-        expect_out = [0, 3, 3, 3, 1, 1, 1, 2, 2, 2]
+        expect_out = [0, 1, 1, 1, 2, 2, 2, 3, -1, -1]
         self.assertListEqual(list(out), expect_out)
 

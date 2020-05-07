@@ -6,7 +6,7 @@ from .metric import iv
 from .utils import is_categorical
 
 
-def iv_with_name(x, y, name='feature'):
+def iv_with_name(x, y, name='feature', **kwargs):
     """
     Compute IV for continuous feature.
     Parameters
@@ -20,11 +20,11 @@ def iv_with_name(x, y, name='feature'):
     [name, iv] : feature name and IV of feature x
     """
     is_continuous = not is_categorical(x)
-    iv_value = iv(x, y, is_continuous)
+    iv_value = iv(x, y, is_continuous, **kwargs)
     return [name, iv_value]
 
 
-def iv_all(frame, y, exclude_cols=None):
+def iv_all(frame, y, exclude_cols=None, **kwargs):
     """
     Compute IV of features in frame
 
@@ -46,7 +46,9 @@ def iv_all(frame, y, exclude_cols=None):
 
     for name, x in frame.iteritems():
         if not (exclude_cols and name in exclude_cols):
-            r = pool.apply_async(iv_with_name, args=(x, y), kwds={'name': name})
+            kwds = kwargs.copy()
+            kwds['name'] = name
+            r = pool.apply_async(iv_with_name, args=(x, y), kwds=kwds)
             res.append(r)
 
     pool.close()
