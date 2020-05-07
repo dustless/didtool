@@ -1,3 +1,4 @@
+import os
 import unittest
 import pandas as pd
 import numpy as np
@@ -6,14 +7,20 @@ from didtool.model import LGBModelSingle, LGBModelStacking
 
 
 class TestModel(unittest.TestCase):
+    def setUp(self):
+        for root, dirs, files in os.walk('./test_out', topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+
     def test_model_single(self):
         df = pd.read_csv('samples.csv')
-        df['x5'] = df['x5'].astype('category')
+        df['v5'] = df['v5'].astype('category')
 
-        features = [col for col in df.columns.values
-                    if col not in ('target', 'random')]
+        features = [col for col in df.columns.values if col != 'target']
         model_param = dict(
-            boosting_type='gbdt', n_estimators=100, learning_rate=0.1,
+            boosting_type='gbdt', n_estimators=10, learning_rate=0.05,
             max_depth=5, feature_fraction=1, bagging_fraction=1, reg_alpha=1,
             reg_lambda=1, min_data_in_leaf=10, random_state=27
         )
@@ -26,6 +33,11 @@ class TestModel(unittest.TestCase):
         self.assertEqual(m.data[m.data.group == 2].shape[0], 200)
 
         # test train
+        m.train(save_learn_curve=False)
+        m.evaluate()
+
+        # test update model params
+        m.update_model_params({'n_estimators': 100})
         m.train(save_learn_curve=True)
 
         # test evaluate
@@ -40,12 +52,11 @@ class TestModel(unittest.TestCase):
 
     def test_model_stacking(self):
         df = pd.read_csv('samples.csv')
-        df['x5'] = df['x5'].astype('category')
+        df['v5'] = df['v5'].astype('category')
 
-        features = [col for col in df.columns.values
-                    if col not in ('target', 'random')]
+        features = [col for col in df.columns.values if col != 'target']
         model_param = dict(
-            boosting_type='gbdt', n_estimators=100, learning_rate=0.1,
+            boosting_type='gbdt', n_estimators=10, learning_rate=0.05,
             max_depth=5, feature_fraction=1, bagging_fraction=1, reg_alpha=1,
             reg_lambda=1, min_data_in_leaf=10, random_state=27
         )
@@ -60,9 +71,15 @@ class TestModel(unittest.TestCase):
         self.assertEqual(m.data[m.data.fold == -1].shape[0], 100)
 
         # test train
-        m.train(save_learn_curve=True)
+        m.train(save_learn_curve=False)
 
         # test evaluate
+        result = m.evaluate()
+        print(result)
+
+        # test update model param
+        m.update_model_params({'n_estimators': 100})
+        m.train(save_learn_curve=True)
         result = m.evaluate()
         print(result)
 

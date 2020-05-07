@@ -89,13 +89,13 @@ class TestSelector(unittest.TestCase):
         print(selector.importance_stats)
 
         drop_cols = selector.drop_cols
-        self.assertListEqual(drop_cols['missing'], ['x13', 'x3', 'x12', 'x19'])
-        self.assertListEqual(drop_cols['low_iv'], ['x7', 'x10', 'x11'])
-        self.assertListEqual(drop_cols['correlated'], ['x4', 'x2', 'x14'])
+        self.assertListEqual(drop_cols['missing'], ['v13', 'v3', 'v12', 'v19'])
+        self.assertListEqual(drop_cols['low_iv'], ['v7', 'v10', 'v11'])
+        self.assertListEqual(drop_cols['correlated'], ['v4', 'v2', 'v14'])
         # importance may change across runs
         self.assertSetEqual(set(drop_cols['low_importance']),
-                            {'x1', 'x6', 'x20', 'x8', 'x5'})
+                            {'v1', 'v6', 'v20', 'v8', 'v5'})
         # selector.plot_missing()
         # selector.plot_iv()
         # selector.plot_correlated(plot_all=True)
-        selector.plot_importance()
+        # selector.plot_importance()

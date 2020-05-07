@@ -30,7 +30,8 @@ class LGBModelSingle:
     model_name: str, name of model
 
     feature_names: str or list(default='auto')
-        feature_names of dateset. If set to 'auto', use all features in x_train
+        feature_names of dateset. If set to 'auto', use all features in data
+        except target column
 
     model_params : dict
         params for LGBMClassifier
@@ -45,10 +46,16 @@ class LGBModelSingle:
         pipeline for exporting PMML model file
 
     used_features : list of features used in model
+
+    _model_params : dict
+        params for LGBMClassifier
+        (https://lightgbm.readthedocs.io/en/latest/Parameters.html)
+
+    _mapper : object of ColumnTransformer
     """
 
     def __init__(self, data, feature_names, target='target', out_path='out',
-                 model_params={}, model_name='model'):
+                 model_params=None, model_name='model'):
         self.data = data
         self.target = target
         self.model_name = model_name
@@ -64,22 +71,35 @@ class LGBModelSingle:
             print('Create directory %s' % self.out_path)
 
         if feature_names == 'auto':
-            self.feature_names = list(data.columns.values)
+            self.feature_names = [col for col in list(data.columns.values)
+                                  if col != self.target]
         elif type(feature_names) == list:
             self.feature_names = feature_names
         else:
             raise Exception("param `feature_names` must be a list or 'auto'")
 
-        dtypes = {feat: data[feat].dtype for feat in self.feature_names}
-        mapper, categorical_feature = make_lightgbm_column_transformer(
-            dtypes, missing_value_aware=True)
-        model_params['categorical_feature'] = categorical_feature
-        model_params['feature_name'] = self.feature_names
-        self.model = lgb.LGBMClassifier(**model_params)
-        self.pipeline = PMMLPipeline([("mapper", mapper),
-                                      ("model", self.model)])
-
         self.used_features = None
+        self.model = None
+        self.pipeline = None
+
+        dtypes = {feat: self.data[feat].dtype for feat in self.feature_names}
+        mapper, _ = make_lightgbm_column_transformer(dtypes,
+                                                     missing_value_aware=True)
+        self._model_params = {}
+        self._mapper = mapper
+        self.update_model_params(model_params)
+
+    def update_model_params(self, model_params):
+        """
+        update model params and create new model
+        """
+        if model_params:
+            self._model_params.update(model_params)
+
+        # create new model by updated model params
+        self.model = lgb.LGBMClassifier(**self._model_params)
+        self.pipeline = PMMLPipeline([("mapper", self._mapper),
+                                      ("model", self.model)])
 
     def split_data(self, train_mask, val_mask):
         """
@@ -259,10 +279,16 @@ class LGBModelStacking:
         pipelines for exporting PMML model file
 
     used_features : lists of features used in models
+
+    _model_params : dict
+        params for LGBMClassifier
+        (https://lightgbm.readthedocs.io/en/latest/Parameters.html)
+
+    _mapper : object of ColumnTransformer
     """
 
     def __init__(self, data, feature_names, target='target', out_path='out',
-                 model_params={}, n_fold=5, model_name='model'):
+                 model_params=None, n_fold=5, model_name='model'):
         self.data = data
         self.target = target
         self.n_fold = n_fold
@@ -275,20 +301,32 @@ class LGBModelStacking:
 
         self.feature_names = feature_names
 
-        dtypes = {feat: data[feat].dtype for feat in self.feature_names}
-        mapper, categorical_feature = make_lightgbm_column_transformer(
-            dtypes, missing_value_aware=True)
-        model_params['categorical_feature'] = categorical_feature
-        model_params['feature_name'] = self.feature_names
+        self.models = None
+        self.pipelines = None
+        self.used_features = None
+
+        dtypes = {feat: self.data[feat].dtype for feat in self.feature_names}
+        mapper, _ = make_lightgbm_column_transformer(dtypes,
+                                                     missing_value_aware=True)
+        self._model_params = {}
+        self._mapper = mapper
+        self.update_model_params(model_params)
+
+    def update_model_params(self, model_params):
+        """
+        update model params and create new models
+        """
+        if model_params:
+            self._model_params.update(model_params)
+
         self.models = []
         self.pipelines = []
-        for _ in range(n_fold):
-            model = lgb.LGBMClassifier(**model_params)
-            pipeline = PMMLPipeline([("mapper", mapper),
+        for _ in range(self.n_fold):
+            model = lgb.LGBMClassifier(**self._model_params)
+            pipeline = PMMLPipeline([("mapper", self._mapper),
                                      ("model", model)])
             self.models.append(model)
             self.pipelines.append(pipeline)
-        self.used_features = None
 
     def split_data(self, oot_mask, random_state=None):
         """
@@ -420,10 +458,28 @@ class LGBModelStacking:
                 return probs[fold]
             return np.mean(probs)
 
-        result['final_prob'] = result.apply(
+        result['prob'] = result.apply(
             lambda x: _get_final_prob(
                 [x["prob_%d" % i] for i in range(0, self.n_fold)],
                 int(x["fold"])), axis=1)
+
+        train_res = result[result.fold >= 0]
+        for k in range(self.n_fold):
+            print("**** model_%d ****" % k)
+            print('train AUC: %.5f' % roc_auc_score(
+                train_res[train_res.fold != k][self.target],
+                train_res[train_res.fold != k]['prob']))
+            print('val AUC: %.5f' % roc_auc_score(
+                train_res[train_res.fold == k][self.target],
+                train_res[train_res.fold == k]['prob']))
+
+        print("**** model_stacking ****")
+        print('total train AUC: %.5f' % roc_auc_score(
+            result[result.fold >= 0][self.target],
+            result[result.fold >= 0]['prob']))
+        print('total test AUC: %.5f' % roc_auc_score(
+            result[result.fold == -1][self.target],
+            result[result.fold == -1]['prob']))
         return result
 
     def export(self, export_pmml=True, export_pkl=False):
