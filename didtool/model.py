@@ -5,7 +5,6 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 from sklearn.metrics.ranking import roc_auc_score
-from sklearn.model_selection import KFold, train_test_split
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
 import matplotlib.pyplot as plt
@@ -20,18 +19,24 @@ class LGBModelSingle:
     Parameters
     --------
     data : DataFrame
-        the whole data for training and testing
+        The whole data for training and evaluating. There should be a column
+        named `group_col` indicate data group:
+        - 0: training data set
+        - 1: validation data set
+        - 2: testing data set
 
     target : str(dafault='target')
         label name in data
+
+    group_col : str(default='group')
+        group column name
 
     out_path: str, output path
 
     model_name: str, name of model
 
-    feature_names: str or list(default='auto')
-        feature_names of dateset. If set to 'auto', use all features in data
-        except target column
+    feature_names: list
+        used to filter features from data. All features should be in data.
 
     model_params : dict
         params for LGBMClassifier
@@ -54,29 +59,29 @@ class LGBModelSingle:
     _mapper : object of ColumnTransformer
     """
 
-    def __init__(self, data, feature_names, target='target', out_path='out',
-                 model_params=None, model_name='model'):
+    def __init__(self, data, feature_names, target='target', group_col='group',
+                 out_path='out', model_params=None, model_name='model'):
+        # check data columns
+        if target not in data:
+            raise Exception("column '%s' is missing from data" % target)
+        if group_col not in data:
+            raise Exception("column '%s' is missing from data" % group_col)
+        for col in feature_names:
+            if col not in data:
+                raise Exception("column %s not in `data`, "
+                                "but appears in `feature_names`" % col)
+
         self.data = data
         self.target = target
         self.model_name = model_name
+        self.group_col = group_col
 
         self.out_path = os.path.abspath(out_path)
         if not os.path.exists(self.out_path):
             os.makedirs(self.out_path)
             print('Create directory %s' % self.out_path)
 
-        self.out_path = os.path.abspath(out_path)
-        if not os.path.exists(self.out_path):
-            os.makedirs(self.out_path)
-            print('Create directory %s' % self.out_path)
-
-        if feature_names == 'auto':
-            self.feature_names = [col for col in list(data.columns.values)
-                                  if col != self.target]
-        elif type(feature_names) == list:
-            self.feature_names = feature_names
-        else:
-            raise Exception("param `feature_names` must be a list or 'auto'")
+        self.feature_names = feature_names
 
         self.used_features = None
         self.model = None
@@ -101,55 +106,6 @@ class LGBModelSingle:
         self.pipeline = PMMLPipeline([("mapper", self._mapper),
                                       ("model", self.model)])
 
-    def split_data(self, train_mask, val_mask):
-        """
-        Split data set into train/val/test part by specified masks.
-        Add a group column into `self.data`:
-            - 0: training data set
-            - 1: validation data set
-            - 2: testing data set
-
-        Parameters
-        --------
-        train_mask : array or series of bool
-            used to split train data set
-
-        val_mask : array or series of bool
-            used to split validation data set
-        """
-        self.data["group"] = -1
-        self.data.loc[train_mask, "group"] = 0
-        self.data.loc[val_mask, "group"] = 1
-        self.data.loc[~(train_mask | val_mask), "group"] = 2
-
-    def split_data_random(self, train_size=0.6, val_size=0.2):
-        """
-        Split data set into train/val/test part randomly
-
-        Add a group column into `self.data`:
-            - 0: training data set
-            - 1: validation data set
-            - 2: testing data set
-
-        Parameters
-        --------
-        train_size : float, 0.0~1.0
-            the proportion of the dataset to include in the train split
-
-        val_size : float, 0.0~1.0
-            the proportion of the dataset to include in the validation split
-        """
-        train, val = train_test_split(
-            self.data[self.target], train_size=train_size,
-            random_state=1, stratify=self.data[self.target])
-        val, _ = train_test_split(val, train_size=val_size / (1 - train_size),
-                                  random_state=1, stratify=val)
-        train_mask = np.zeros(self.data.shape[0], dtype=bool)
-        train_mask[train.index] = True
-        val_mask = np.zeros(self.data.shape[0], dtype=bool)
-        val_mask[val.index] = True
-        self.split_data(train_mask, val_mask)
-
     def train(self, early_stopping_rounds=20, eval_metric="binary_logloss",
               save_learn_curve=False):
         """
@@ -165,9 +121,8 @@ class LGBModelSingle:
         save_learn_curve : bool(default=False)
             whether save learn curve
         """
-
-        train_data = self.data[self.data.group == 0]
-        val_data = self.data[self.data.group == 1]
+        train_data = self.data[self.data[self.group_col] == 0]
+        val_data = self.data[self.data[self.group_col] == 1]
 
         eval_set = [
             (train_data[self.feature_names], train_data[self.target]),
@@ -212,15 +167,15 @@ class LGBModelSingle:
             self.data[self.feature_names])[:, -1]
 
         print('train AUC: %.5f' % roc_auc_score(
-            result[result.group == 0][self.target],
-            result[result.group == 0]['prob']))
+            result[result[self.group_col] == 0][self.target],
+            result[result[self.group_col] == 0]['prob']))
         print('val AUC: %.5f' % roc_auc_score(
-            result[result.group == 1][self.target],
-            result[result.group == 1]['prob']))
-        if any(result.group == 2):
+            result[result[self.group_col] == 1][self.target],
+            result[result[self.group_col] == 1]['prob']))
+        if any(result[self.group_col] == -1):
             print('test AUC: %.5f' % roc_auc_score(
-                result[result.group == 2][self.target],
-                result[result.group == 2]['prob']))
+                result[result[self.group_col] == -1][self.target],
+                result[result[self.group_col] == -1]['prob']))
         return result
 
     def save_feature_importance(self):
@@ -280,10 +235,16 @@ class LGBModelStacking:
     Parameters
     --------
     data : DataFrame
-        the whole data for training and testing
+        The whole data for training and evaluating. There should be a column
+        named `group` indicate data group:
+        - -1: oot data set
+        - [0, n_fold): k-fold of training data set
 
     target : str(dafault='target')
         label name in data
+
+    group_col : str(default='group')
+        group column name
 
     n_fold : int
         split num of training dataset
@@ -316,19 +277,33 @@ class LGBModelStacking:
     _mapper : object of ColumnTransformer
     """
 
-    def __init__(self, data, feature_names, target='target', out_path='out',
-                 model_params=None, n_fold=5, model_name='model'):
+    def __init__(self, data, feature_names, target='target', group_col='group',
+                 out_path='out', model_params=None, n_fold=5,
+                 model_name='model'):
+        # check data columns
+        if target not in data:
+            raise Exception("column '%s' is missing from data" % target)
+        if group_col not in data:
+            raise Exception("column '%s' is missing from data" % group_col)
+        for col in feature_names:
+            if col not in data:
+                raise Exception("column %s not in `data`, "
+                                "but appears in `feature_names`" % col)
+        if data[group_col].max() != n_fold - 1:
+            raise Exception("training data groups(%d) does not match the fold"
+                            " num(%d)" % (data[group_col].max() + 1, n_fold))
+
         self.data = data
         self.target = target
+        self.group_col = group_col
         self.n_fold = n_fold
         self.model_name = model_name
+        self.feature_names = feature_names
 
         self.out_path = os.path.abspath(out_path)
         if not os.path.exists(self.out_path):
             os.makedirs(self.out_path)
             print('Create directory %s' % self.out_path)
-
-        self.feature_names = feature_names
 
         self.models = None
         self.pipelines = None
@@ -357,40 +332,6 @@ class LGBModelStacking:
             self.models.append(model)
             self.pipelines.append(pipeline)
 
-    def split_data(self, oot_mask, random_state=None):
-        """
-        Split data into train/oot part, and then split train dataset into
-        `self.k_fold` part
-
-        After split, a column named 'fold' will be append to `self.data`.
-            - -1: oot data set
-            - [0, n_fold): k-fold of training data set
-
-        Parameters
-        --------
-        oot_mask : array or series of bool
-            used to split oot dataset
-        random_state : int or None
-            used for KFold
-        """
-        train_data = self.data[~oot_mask]
-        k_fold = KFold(n_splits=self.n_fold, shuffle=True,
-                       random_state=random_state)
-        k_fold_index = []
-        for _, indexes in k_fold.split(train_data[self.target]):
-            k_fold_index.append(indexes)
-
-        train_data.reset_index(inplace=True)
-        train_data.loc[:, "fold"] = self.n_fold
-        for k in range(0, self.n_fold):
-            train_data.loc[k_fold_index[k], 'fold'] = k
-
-        self.data.reset_index(inplace=True)
-        self.data = pd.merge(self.data, train_data[["index", "fold"]],
-                             how="left", on="index")
-        self.data["fold"].fillna(-1, inplace=True)
-        self.data.drop("index", axis=1, inplace=True)
-
     def train(self, early_stopping_rounds=20, eval_metric="binary_logloss",
               save_learn_curve=False):
         """
@@ -407,9 +348,9 @@ class LGBModelStacking:
             whether save learning curve of models
         """
         for k in range(0, self.n_fold):
-            train_k = self.data[
-                (self.data.fold >= 0) & (self.data.fold != k)]
-            val_k = self.data[self.data.fold == k]
+            train_k = self.data[(self.data[self.group_col] >= 0) &
+                                (self.data[self.group_col] != k)]
+            val_k = self.data[self.data[self.group_col] == k]
             eval_set = [(train_k[self.feature_names], train_k[self.target]),
                         (val_k[self.feature_names], val_k[self.target])]
             self.pipelines[k].fit(
@@ -490,25 +431,25 @@ class LGBModelStacking:
         result['prob'] = result.apply(
             lambda x: _get_final_prob(
                 [x["prob_%d" % i] for i in range(0, self.n_fold)],
-                int(x["fold"])), axis=1)
+                int(x[self.group_col])), axis=1)
 
-        train_res = result[result.fold >= 0]
+        train_res = result[result[self.group_col] >= 0]
         for k in range(self.n_fold):
             print("**** model_%d ****" % k)
             print('train AUC: %.5f' % roc_auc_score(
-                train_res[train_res.fold != k][self.target],
-                train_res[train_res.fold != k]['prob']))
+                train_res[train_res[self.group_col] != k][self.target],
+                train_res[train_res[self.group_col] != k]['prob']))
             print('val AUC: %.5f' % roc_auc_score(
-                train_res[train_res.fold == k][self.target],
-                train_res[train_res.fold == k]['prob']))
+                train_res[train_res[self.group_col] == k][self.target],
+                train_res[train_res[self.group_col] == k]['prob']))
 
         print("**** model_stacking ****")
         print('total train AUC: %.5f' % roc_auc_score(
-            result[result.fold >= 0][self.target],
-            result[result.fold >= 0]['prob']))
+            result[result[self.group_col] >= 0][self.target],
+            result[result[self.group_col] >= 0]['prob']))
         print('total test AUC: %.5f' % roc_auc_score(
-            result[result.fold == -1][self.target],
-            result[result.fold == -1]['prob']))
+            result[result[self.group_col] == -1][self.target],
+            result[result[self.group_col] == -1]['prob']))
         return result
 
     def export(self, export_pmml=True, export_pkl=False):
