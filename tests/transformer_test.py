@@ -59,6 +59,7 @@ class TestTransformer(unittest.TestCase):
 
         transformer = WOETransformer()
         transformer.fit(x, y)
+        print(transformer.woe_df)
 
         test_x = pd.DataFrame({'v1': [0.02, 0.05, np.nan], 'v5': [0, 1, -1]})
         res = transformer.transform(test_x)

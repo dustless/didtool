@@ -1,3 +1,5 @@
+from multiprocessing import Pool, cpu_count
+
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
@@ -147,6 +149,12 @@ class SingleWOETransformer(TransformerMixin):
         return res
 
 
+def _create_and_fit_transformer(cut_method, n_bins, x, y, name):
+    transformer = SingleWOETransformer(cut_method, n_bins)
+    transformer.fit(x, y, name)
+    return transformer
+
+
 class WOETransformer(TransformerMixin):
     """
     WOE transformer
@@ -184,11 +192,26 @@ class WOETransformer(TransformerMixin):
         y : array-like
             the target's value
         """
-        # TODO: use multi-process
+        self.transformers = {}
+        self.woe_df = None
+
+        # use multi-process
+        res = []
+        pool = Pool(cpu_count())
+
         for name, v in x.iteritems():
-            transformer = SingleWOETransformer(self.cut_method, self.n_bins)
-            transformer.fit(v, y, name)
-            self.transformers[name] = transformer
+            r = pool.apply_async(
+                _create_and_fit_transformer,
+                args=(self.cut_method, self.n_bins, v, y, name))
+            res.append(r)
+
+        pool.close()
+        pool.join()
+
+        transformers = [r.get() for r in res]
+        for transformer in transformers:
+            self.transformers[transformer.var_name] = transformer
+
         self.woe_df = pd.concat([t.woe_df for t in self.transformers.values()])
         return self
 
