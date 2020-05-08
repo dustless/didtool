@@ -39,6 +39,8 @@ def step_cut(x, n_bins=DEFAULT_BINS, nan=None, return_bins=False):
         out = fillna(out, nan).astype(np.int)
 
     if return_bins:
+        bins[0] = -np.inf
+        bins[-1] = np.inf
         return out, bins
     else:
         return out
@@ -75,6 +77,8 @@ def quantile_cut(x, n_bins=DEFAULT_BINS, nan=None, return_bins=False):
         out = fillna(out, nan).astype(np.int)
 
     if return_bins:
+        bins[0] = -np.inf
+        bins[-1] = np.inf
         return out, bins
     else:
         return out
@@ -125,11 +129,7 @@ def dt_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
     thresholds = tree.tree_.threshold
     thresholds = thresholds[thresholds != _tree.TREE_UNDEFINED]
     bins = np.sort(thresholds)
-    min_val = np.nanmin(x)
-    max_val = np.nanmax(x)
-    min_val = min_val - max(np.abs(min_val) * 0.001, 0.001)
-    max_val = max_val + max(np.abs(max_val) * 0.001, 0.001)
-    bins = np.array([min_val] + list(bins) + [max_val])
+    bins = np.array([-np.inf] + list(bins) + [np.inf])
 
     out, bins = pd.cut(x, bins, labels=False, retbins=True)
     if nan is not None:
@@ -199,11 +199,7 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
                 nodes.append(nodes[i]['right_child'])
         i += 1
     bins = np.sort(thresholds)
-    min_val = np.nanmin(x)
-    max_val = np.nanmax(x)
-    min_val = min_val - max(np.abs(min_val) * 0.001, 0.001)
-    max_val = max_val + max(np.abs(max_val) * 0.001, 0.001)
-    bins = np.array([min_val] + list(bins) + [max_val])
+    bins = np.array([-np.inf] + list(bins) + [np.inf])
 
     out, bins = pd.cut(x, bins, labels=False, retbins=True)
     if nan is not None:
@@ -262,3 +258,29 @@ def cut(x, target=None, method='dt', n_bins=DEFAULT_BINS,
         return quantile_cut(x, n_bins=n_bins, return_bins=return_bins, **kwargs)
     else:
         raise Exception("unsupported method `%s`" % method)
+
+
+def cut_with_bins(x, bins, nan=-1, right=True):
+    """
+    Cut values into discrete intervals.
+
+    Parameters
+    ----------
+    x : array-like
+        The input array to be binned. Must be 1-dimensional.
+    bins: array-like
+        sequence of scalars : Defines the bin edges allowing non-uniform width.
+    nan: Replace NA values with `nan` in the result if `nan` is not None.
+    right : bool(default=True)
+        Indicates whether `bins` includes the rightmost edge or not.
+
+    Returns
+    -------
+    out : numpy.ndarray
+        An array-like object representing the respective bin for each value
+         of `x`.
+    """
+    out = pd.cut(x, bins, right=right, labels=False)
+    if nan is not None:
+        out = fillna(out, nan).astype(np.int)
+    return out

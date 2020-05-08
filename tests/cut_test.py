@@ -30,3 +30,13 @@ class TestCut(unittest.TestCase):
         expect_out = [0, 1, 1, 1, 2, 2, 2, 3, -1, -1]
         self.assertListEqual(list(out), expect_out)
 
+    def test_cut_with_bins(self):
+        x = [0, 1, 2, 2, 3, 6, 8, 10, np.nan]
+        out, bins = didtool.step_cut(x, 4, nan=-1, return_bins=True)
+        expect_out = [0, 0, 0, 0, 1, 2, 3, 3, -1]
+        self.assertListEqual(list(out), expect_out)
+        self.assertListEqual(list(bins), [-np.inf, 2.5, 5., 7.5, np.inf])
+
+        x2 = [0, 4, 11, np.nan]
+        out2 = didtool.cut_with_bins(x2, bins)
+        self.assertListEqual(list(out2), [0, 1, 3, -1])
