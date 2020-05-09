@@ -3,6 +3,7 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
+import matplotlib.pyplot as plt
 
 from .utils import is_categorical
 from .cut import cut, DEFAULT_BINS, cut_with_bins
@@ -80,7 +81,7 @@ class SingleWOETransformer(TransformerMixin):
             if any(x == -1):
                 woe_bins.append('NA')
             for i in range(len(bins) - 1):
-                woe_bins.append('(%f, %f]' % (bins[i], bins[i + 1]))
+                woe_bins.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
         else:
             woe_bins = ['[%s]' % v for v in np.sort(np.unique(x))]
 
@@ -147,6 +148,36 @@ class SingleWOETransformer(TransformerMixin):
             res[x == key] = self.woe_map[key]
 
         return res
+
+    def plot_woe(self):
+        """
+        plot details of bins
+        """
+        n_bins = self.woe_df.shape[0]
+
+        fig = plt.figure()
+        plt.xticks(range(n_bins), self.woe_df['bin_range'], rotation=90)
+        plt.subplots_adjust(bottom=0.3)
+
+        ax1 = fig.add_subplot()
+        ax1.plot(range(n_bins), self.woe_df['woe'], 'og-', label='woe')
+        ax1.plot(range(n_bins), self.woe_df['iv_list'], 'oy-', label='iv')
+        ax1.axhline(y=0, ls=":", c="grey")
+        ax1.legend(loc=1)
+        ax1.set_ylabel('woe')
+        ax1.set_ylim([self.woe_df['woe'].min() - 1,
+                      self.woe_df['woe'].max() + 1])
+
+        # Create a twin of Axes with a shared x-axis but independent y-axis.
+        ax2 = ax1.twinx()
+        ax2.bar([i - 0.2 for i in range(n_bins)], self.woe_df['group_rate'],
+                alpha=0.5, color='blue', width=0.4, label='group_rate')
+        ax2.bar([i + 0.2 for i in range(n_bins)], self.woe_df['positive_rate'],
+                alpha=0.5, color='red', width=0.4, label='positive_rate')
+        ax2.legend(loc=2)
+        ax2.set_ylim([0, 1])
+
+        plt.show()
 
 
 def _create_and_fit_transformer(cut_method, n_bins, x, y, name):

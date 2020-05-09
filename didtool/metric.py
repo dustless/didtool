@@ -153,7 +153,7 @@ def psi(expect_score, actual_score, n_bins=DEFAULT_BINS, plot=False):
     return psi_value
 
 
-def save_roc(y_true, y_pred, out_path, file_name='roc.png'):
+def plot_roc(y_true, y_pred, out_path=None, file_name='roc.png'):
     """
     Compute receiver operating characteristic (ROC) and save the figure.
 
@@ -166,8 +166,8 @@ def save_roc(y_true, y_pred, out_path, file_name='roc.png'):
     y_pred : array, shape = [n_samples]
         target scores, predicted by estimator
 
-    out_path : str
-        save figure to `out_path`
+    out_path : str or None
+        if out_path specified, save figure to `out_path`
 
     file_name : str
         save figure as `file_name`
@@ -185,10 +185,13 @@ def save_roc(y_true, y_pred, out_path, file_name='roc.png'):
     plt.xlabel('False positive rate')
     plt.ylabel('True positive rate')
     plt.title('ROC curve (AUC=%.3f,KS=%.3f)' % (auc_value, ks_value))
-    plt.savefig(os.path.join(out_path, file_name))
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    else:
+        plt.show()
 
 
-def compare_roc(y_true_list, y_pred_list, model_name_list, out_path,
+def compare_roc(y_true_list, y_pred_list, model_name_list, out_path=None,
                 file_name='roc_cmp.png'):
     """
     Plot multi ROC of different input and save the figure.
@@ -205,8 +208,8 @@ def compare_roc(y_true_list, y_pred_list, model_name_list, out_path,
     model_name_list : array of str
         curve labels
 
-    out_path : str
-        save figure to `out_path`
+    out_path : str or None
+        if out_path specified, save figure to `out_path`
 
     file_name : str
         save figure as `file_name`
@@ -227,10 +230,13 @@ def compare_roc(y_true_list, y_pred_list, model_name_list, out_path,
     plt.plot([0, 1], [0, 1], 'k--')
     plt.xlabel('False positive rate')
     plt.ylabel('True positive rate')
-    plt.savefig(os.path.join(out_path, file_name))
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    else:
+        plt.show()
 
 
-def save_pr(y_true, y_pred, out_path, file_name='pr.png'):
+def plot_pr_curve(y_true, y_pred, out_path=None, file_name='pr.png'):
     """
     Compute Precision-Recall Curve (PRC) and save the figure.
 
@@ -243,8 +249,8 @@ def save_pr(y_true, y_pred, out_path, file_name='pr.png'):
     y_pred : array, shape = [n_samples]
         target scores, predicted by estimator
 
-    out_path : str
-        save figure to `out_path`
+    out_path : str or None
+        if out_path specified, save figure to `out_path`
 
     file_name : str
         save figure as `file_name`
@@ -259,10 +265,14 @@ def save_pr(y_true, y_pred, out_path, file_name='pr.png'):
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title('Precision-Recall curve: AP={0:0.3f}'.format(average_precision))
-    plt.savefig(os.path.join(out_path, file_name))
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    else:
+        plt.show()
 
 
-def save_pr_threshold(y_true, y_pred, out_path, file_name='pr_threshold.png'):
+def plot_pr_threshold(y_true, y_pred, out_path=None,
+                      file_name='pr_threshold.png'):
     """
     Compute precision&recall curve changed by threshold and save the figure.
 
@@ -275,8 +285,8 @@ def save_pr_threshold(y_true, y_pred, out_path, file_name='pr_threshold.png'):
     y_pred : array, shape = [n_samples]
         target scores, predicted by estimator
 
-    out_path : str
-        save figure to `out_path`
+    out_path : str or None
+        if out_path specified, save figure to `out_path`
 
     file_name : str
         save figure as `file_name`
@@ -295,4 +305,7 @@ def save_pr_threshold(y_true, y_pred, out_path, file_name='pr_threshold.png'):
     plt.yticks(np.arange(0.0, 1.1, 0.1))
     plt.grid(linestyle='-')
     plt.legend()
-    plt.savefig(os.path.join(out_path, file_name))
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    else:
+        plt.show()

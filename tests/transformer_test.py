@@ -37,6 +37,8 @@ class TestTransformer(unittest.TestCase):
         self.assertAlmostEqual(res[1], -0.640322, 6)
         self.assertAlmostEqual(res[2], -1.017155, 6)
 
+        # transformer.plot_woe()
+
         # fit another categorical value
         x = df['v5'].astype('category')
         transformer.fit(x, y, 'v5')
