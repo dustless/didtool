@@ -19,8 +19,8 @@ def step_cut(x, n_bins=DEFAULT_BINS, nan=None, return_bins=False):
         The input array to be binned. Must be 1-dimensional.
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`. The
-        range of `x` is extended by .1% on each side to include the minimum
-        and maximum values of `x`.
+        range of `x` is extended to -inf/inf on each side to cover the whole
+        range of `x`.
     nan: Replace NA values with `nan` in the result if `nan` is not None.
     return_bins : bool, default False
         Whether to return the bins or not.
@@ -56,8 +56,8 @@ def quantile_cut(x, n_bins=DEFAULT_BINS, nan=None, return_bins=False):
         The input array to be binned. Must be 1-dimensional.
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`. The
-        range of `x` is extended by .1% on each side to include the minimum
-        and maximum values of `x`.
+        range of `x` is extended to -inf/inf on each side to cover the whole
+        range of `x`.
     nan: Replace NA values with `nan` in the result if `nan` is not None.
     return_bins : bool, default False
         Whether to return the bins or not.
@@ -98,8 +98,8 @@ def dt_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
         target will be used to fit decision tree
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`. The
-        range of `x` is extended by .1% on each side to include the minimum
-        and maximum values of `x`.
+        range of `x` is extended to -inf/inf on each side to cover the whole
+        range of `x`.
     nan: Replace NA values with `nan` in the result if `nan` is not None.
     min_bin : float, optional (default=0.01)
         The minimum fraction of samples required to be in a bin.
@@ -155,8 +155,8 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
         target will be used to fit decision tree
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`. The
-        range of `x` is extended by .1% on each side to include the minimum
-        and maximum values of `x`.
+        range of `x` is extended to -inf/inf on each side to cover the whole
+        range of `x`.
     nan: Replace NA values with `nan` in the result if `nan` is not None.
     min_bin : float, optional (default=0.01)
         The minimum fraction of samples required to be in a bin.
@@ -230,8 +230,8 @@ def cut(x, target=None, method='dt', n_bins=DEFAULT_BINS,
         - 'quantile': cut values by quantile
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`. The
-        range of `x` is extended by .1% on each side to include the minimum
-        and maximum values of `x`.
+        range of `x` is extended to -inf/inf on each side to cover the whole
+        range of `x`.
     return_bins : bool, default False
         Whether to return the bins or not.
     **kwargs
