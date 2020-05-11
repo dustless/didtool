@@ -5,8 +5,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, \
     average_precision_score
+import seaborn as sns
 
 from .cut import DEFAULT_BINS, cut
+
+sns.set(rc={"figure.figsize": (8, 4)})
 
 
 def probability(y, group_mask=None):
@@ -151,6 +154,56 @@ def psi(expect_score, actual_score, n_bins=DEFAULT_BINS, plot=False):
         plt.title("psi={}".format(psi_value))
         plt.show()
     return psi_value
+
+
+def distribution(x, bins=None, out_path=None, file_name='distribution.png'):
+    """
+    plot distribution of x.
+
+    Parameters
+    ----------
+    x: array-like, shape = [n_samples]
+
+    bins: int or None, num of bins
+
+    out_path : str or None
+        if out_path specified, save figure to `out_path`
+
+    file_name : str
+        save figure as `file_name`
+    """
+    plt.figure()
+    sns.distplot(x, bins=bins, kde=True, rug=False)
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    else:
+        plt.show()
+
+
+def distributions(x_list, bins=None, out_path=None,
+                  file_name='distributions.png'):
+    """
+    compare distributions of x in x_list.
+
+    Parameters
+    ----------
+    x_list: array of array-like, shape = [n_input, n_samples]
+
+    bins: int or None, num of bins
+
+    out_path : str or None
+        if out_path specified, save figure to `out_path`
+
+    file_name : str
+        save figure as `file_name`
+    """
+    plt.figure()
+    for i, x in enumerate(x_list):
+        sns.distplot(x, bins=bins, kde=True, rug=False)
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    else:
+        plt.show()
 
 
 def plot_roc(y_true, y_pred, out_path=None, file_name='roc.png'):

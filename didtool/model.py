@@ -50,7 +50,8 @@ class LGBModelSingle:
     pipeline : object of PMMLPipeline
         pipeline for exporting PMML model file
 
-    used_features : list of features used in model
+    importance_df : DataFrame
+        records feature importance of model
 
     _model_params : dict
         params for LGBMClassifier
@@ -83,7 +84,7 @@ class LGBModelSingle:
 
         self.feature_names = feature_names
 
-        self.used_features = None
+        self.importance_df = None
         self.model = None
         self.pipeline = None
 
@@ -134,6 +135,12 @@ class LGBModelSingle:
                           model__eval_set=eval_set,
                           model__eval_metric=eval_metric)
 
+        imp_score = self.model.feature_importances_
+        self.importance_df = pd.DataFrame({
+            'feature': self.feature_names,
+            'importance': imp_score}
+        ).sort_values(by='importance', ascending=False)
+
         if save_learn_curve:
             result = self.model.evals_result_
             train_res = result.get("valid_0")
@@ -178,27 +185,31 @@ class LGBModelSingle:
                 result[result[self.group_col] == -1]['prob']))
         return result
 
+    def _save_used_features(self):
+        """
+        save used features of model as txt file
+        """
+        used_cols = list(self.importance_df[self.importance_df.importance > 0]
+                         .feature.values)
+        # keep the same order as `self.feature_names`
+        used_cols = [col for col in self.feature_names if col in used_cols]
+
+        # save feature names used in model
+        feature_file = open(os.path.join(self.out_path, 'feature.txt'), 'w')
+        feature_file.writelines([col + '\n' for col in used_cols])
+        feature_file.close()
+
     def save_feature_importance(self, plot=True):
         """
         Save feature importance
         """
-        imp_score = self.model.feature_importances_
-        df_imp = pd.DataFrame(
-            {'feature': self.feature_names, 'importance': imp_score})
-        self.used_features = list(df_imp[df_imp.importance > 0].feature.values)
-
-        df_imp = df_imp.sort_values(by='importance', ascending=False)
-        df_imp.to_csv(os.path.join(self.out_path, "feature_importance.csv"),
-                      index=False)
-
-        feature_file = open(os.path.join(self.out_path, 'feature.txt'), 'w')
-        feature_file.writelines([col + '\n' for col in self.used_features])
-        feature_file.close()
+        self.importance_df.to_csv(
+            os.path.join(self.out_path, "feature_importance.csv"), index=False)
 
         if plot:
             plt.figure()
-            df_imp[:20].plot.barh(x='feature', y='importance', legend=False,
-                                  figsize=(18, 10))
+            self.importance_df[:20].plot.barh(
+                x='feature', y='importance', legend=False, figsize=(18, 10))
             plt.title('Model Feature Importances')
             plt.xlabel('Feature Importance')
             plt.savefig(os.path.join(self.out_path, 'feature_importance.png'))
@@ -215,7 +226,7 @@ class LGBModelSingle:
             export model as pkl file
         """
         # save used features
-        self.save_feature_importance(False)
+        self._save_used_features()
 
         date_str = time.strftime("%Y%m%d")
 
@@ -272,7 +283,8 @@ class LGBModelStacking:
     pipelines : list of PMMLPipeline, length equals to `n_fold`
         pipelines for exporting PMML model file
 
-    used_features : lists of features used in models
+    importance_dfs : list of DataFrame
+        records feature importance of all models
 
     _model_params : dict
         params for LGBMClassifier
@@ -311,7 +323,7 @@ class LGBModelStacking:
 
         self.models = None
         self.pipelines = None
-        self.used_features = None
+        self.importance_dfs = None
 
         dtypes = {feat: self.data[feat].dtype for feat in self.feature_names}
         mapper, _ = make_lightgbm_column_transformer(dtypes,
@@ -357,6 +369,7 @@ class LGBModelStacking:
         save_learn_curve : bool
             whether save learning curve of models
         """
+        self.importance_dfs = []
         for k in range(0, self.n_fold):
             train_k = self.data[(self.data[self.group_col] >= 0) &
                                 (self.data[self.group_col] != k)]
@@ -369,6 +382,16 @@ class LGBModelStacking:
                 model__eval_set=eval_set, model__eval_metric=eval_metric,
                 model__verbose=verbose
             )
+
+            # append feature importance of model k
+            imp_score = self.models[k].feature_importances_
+            df_imp = pd.DataFrame({
+                'feature': self.feature_names,
+                'importance': imp_score}
+            ).sort_values(by='importance', ascending=False)
+            self.importance_dfs.append(df_imp)
+
+            # if needed, plot learn curve
             if save_learn_curve:
                 result = self.models[k].evals_result_
                 train_res = result.get("valid_0")
@@ -388,29 +411,33 @@ class LGBModelStacking:
                 plt.savefig(
                     os.path.join(self.out_path, 'learn_curve_%d.png' % k))
 
-    def save_feature_importance(self, plot=True):
+    def _save_used_features(self):
         """
-        Save feature importance
+        save used features of models as txt file
         """
-        self.used_features = []
         for i in range(self.n_fold):
-            imp_score = self.models[i].feature_importances_
-            df_imp = pd.DataFrame(
-                {'feature': self.feature_names, 'importance': imp_score})
+            df_imp = self.importance_dfs[i]
             used_cols = list(df_imp[df_imp.importance > 0].feature.values)
-            self.used_features.append(used_cols)
-            # save importance stats
-            df_imp = df_imp.sort_values(by='importance', ascending=False)
-            df_imp.to_csv(
-                os.path.join(self.out_path, "feature_importance_%d.csv" % i),
-                index=False
-            )
+            # keep the same order as `self.feature_names`
+            used_cols = [col for col in self.feature_names if col in used_cols]
 
             # save feature names used in model
             feature_file = open(
                 os.path.join(self.out_path, 'feature_%d.txt' % i), 'w')
             feature_file.writelines([col + '\n' for col in used_cols])
             feature_file.close()
+
+    def save_feature_importance(self, plot=True):
+        """
+        Save feature importance
+        """
+        for i in range(self.n_fold):
+            # save importance stats
+            df_imp = self.importance_dfs[i]
+            df_imp.to_csv(
+                os.path.join(self.out_path, "feature_importance_%d.csv" % i),
+                index=False
+            )
 
             if plot:
                 plt.figure()
@@ -477,7 +504,7 @@ class LGBModelStacking:
             export model as pkl file
         """
         # save used features
-        self.save_feature_importance(False)
+        self._save_used_features()
 
         date_str = time.strftime("%Y%m%d")
 

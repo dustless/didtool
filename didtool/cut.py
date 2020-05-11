@@ -213,7 +213,7 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
         return out
 
 
-def get_chi_square_distribution(d_free=4, c_f=0.1):
+def _get_chi_square_distribution(d_free=4, c_f=0.1):
     """
     根据自由度和置信度得到卡方分布和阈值
     params:
@@ -251,12 +251,12 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
         out:分箱后结果
         bins:分箱界限
     """
-
-    # 去除无意义的特征，将有意义的特征留下待卡方分箱筛选
+    # 去除nan，单独分箱
     x = to_ndarray(x)
     target = to_ndarray(target)
     mask = np.isnan(x)
     df = pd.DataFrame({'feature': x[~mask], 'label': target[~mask]})
+
     # 对变量按属性值从小到大排序
     df.sort_index(axis=0, ascending=True, by='feature', inplace=True)
     # 计算每一个属性值对应的卡方统计量等信息
@@ -267,7 +267,7 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
     df.drop(['feature', 'label'], axis=1, inplace=True)
 
     # 获取卡方分箱阀值，大于此值则不合并
-    threshold = get_chi_square_distribution(d_free=n_bins - 1, c_f=cf)
+    threshold = _get_chi_square_distribution(d_free=n_bins - 1, c_f=cf)
 
     while df.shape[0] > n_bins:
         min_index = None
@@ -319,6 +319,7 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
             df.reset_index(inplace=True, drop=True)
         else:
             break
+
     # 获取分箱结果
     bins = [feature_min - 0.0001]
     for i in df['max_value'].values:
@@ -353,6 +354,7 @@ def cut(x, target=None, method='dt', n_bins=DEFAULT_BINS,
         - 'lgb': cut values by lightgbm
         - 'step': cut values by step
         - 'quantile': cut values by quantile
+        - 'chi': cut values by chi square
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`. The
         range of `x` is extended to -inf/inf on each side to cover the whole
@@ -381,9 +383,9 @@ def cut(x, target=None, method='dt', n_bins=DEFAULT_BINS,
         return step_cut(x, n_bins=n_bins, return_bins=return_bins, **kwargs)
     elif method == 'quantile':
         return quantile_cut(x, n_bins=n_bins, return_bins=return_bins, **kwargs)
-    elif method == 'chi_square':
+    elif method == 'chi':
         return chi_square_cut(x, target, n_bins=n_bins, return_bins=return_bins,
-                       **kwargs)
+                              **kwargs)
     else:
         raise Exception("unsupported method `%s`" % method)
 

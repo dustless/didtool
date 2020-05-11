@@ -99,13 +99,13 @@ class Selector:
               (len(to_drop), missing_threshold))
         return self
 
-    def drop_low_iv(self, iv_threshold=0.02):
+    def drop_low_iv(self, iv_threshold=0.02, **kwargs):
         """
         Drop the features with a IV value below `iv_threshold`
         """
         if self.label is None:
             raise ValueError("No training labels provided.")
-        self.iv_stats = iv_all(self.data, self.label)
+        self.iv_stats = iv_all(self.data, self.label, **kwargs)
 
         to_drop_df = self.iv_stats[self.iv_stats.iv < iv_threshold]
         to_drop = list(to_drop_df.index.values)

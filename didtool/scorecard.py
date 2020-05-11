@@ -1,9 +1,10 @@
 # -*- coding:utf-8 -*-
+import os
+import math
 
 from sklearn.base import TransformerMixin, BaseEstimator
 import numpy as np
 import pandas as pd
-import math
 import matplotlib.pyplot as plt
 
 
@@ -231,7 +232,7 @@ class ScoreCardTransformer(BaseEstimator, TransformerMixin):
         plot hit_rate, pos_rate and score of bins
         """
         fig = plt.figure()
-        ax1 = fig.add_subplot()
+        ax1 = fig.add_subplot(111)
         ax1.plot(range(self._n_bins), self.binning_df['score'], 'og-',
                  label='score')
         for i in range(self._n_bins):
@@ -256,3 +257,9 @@ class ScoreCardTransformer(BaseEstimator, TransformerMixin):
         ax2.set_ylim([0, 1])
         plt.xticks(range(self._n_bins), range(self._n_bins))
         plt.show()
+
+    def export_mapping(self, out_path, file_name='map_score_card.csv'):
+        """
+        save mapping_df to file
+        """
+        self.mapping_df.to_csv(os.path.join(out_path, file_name), index=False)
