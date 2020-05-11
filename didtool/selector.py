@@ -140,7 +140,6 @@ class Selector:
         # Extract the upper&down triangle of the correlation matrix except the
         # diagonal line
         corr = corr_matrix.where(~np.eye(corr_matrix.shape[0]).astype(np.bool))
-        print(corr)
 
         # Select the features with correlations above the threshold
         # Need to use the absolute value
