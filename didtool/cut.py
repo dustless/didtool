@@ -213,8 +213,28 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
         return out
 
 
-def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=None, return_bins=False):
-    '''
+def get_chi_square_distribution(d_free=4, c_f=0.1):
+    """
+    根据自由度和置信度得到卡方分布和阈值
+    params:
+        d_free: 自由度, 最大分箱数-1, default 4
+        cf: 显著性水平, default 10%
+    return:
+        卡方阈值
+    """
+    percents = [0.95, 0.90, 0.5, 0.1, 0.05, 0.025, 0.01, 0.005]
+    df = pd.DataFrame(
+        np.array([chi2.isf(percents, df=i) for i in range(1, 30)]))
+    df.columns = percents
+    df.index = df.index + 1
+    # 显示小数点后面数字
+    pd.set_option('precision', 3)
+    return df.loc[d_free, c_f]
+
+
+def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
+                   return_bins=False):
+    """
     计算某个特征每种属性值的卡方统计量
     params: 
         x: 待分箱特征
@@ -230,66 +250,57 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=None, return_bins
     return:
         out:分箱后结果
         bins:分箱界限
-    '''
+    """
 
     # 去除无意义的特征，将有意义的特征留下待卡方分箱筛选
     x = to_ndarray(x)
     target = to_ndarray(target)
     mask = np.isnan(x)
-    df = pd.DataFrame({'feature':x[~mask],'label':target[~mask]})
+    df = pd.DataFrame({'feature': x[~mask], 'label': target[~mask]})
     # 对变量按属性值从小到大排序
-    df.sort_index(axis = 0,ascending = True,by = 'feature',inplace=True)
+    df.sort_index(axis=0, ascending=True, by='feature', inplace=True)
     # 计算每一个属性值对应的卡方统计量等信息
-    df['label_1_count'] = df['label']
-    df['label_0_count'] = 1 - df['label']
+    df['count_1'] = df['label']
+    df['count_0'] = 1 - df['label']
     df['max_value'] = df['feature']
     feature_min = df['feature'].min()
-    df.drop(['feature','label'],axis=1,inplace=True)
+    df.drop(['feature', 'label'], axis=1, inplace=True)
 
-    dfree = n_bins - 1
-
-    def get_chiSquare_distuibution(dfree=4, cf=0.1):
-        '''
-        根据自由度和置信度得到卡方分布和阈值
-        params:
-            dfree: 自由度, 最大分箱数-1, default 4
-            cf: 显著性水平, default 10%
-        return:
-            卡方阈值
-        '''
-        percents = [0.95, 0.90, 0.5, 0.1, 0.05, 0.025, 0.01, 0.005]
-        df = pd.DataFrame(np.array([chi2.isf(percents, df=i) for i in range(1, 30)]))
-        df.columns = percents
-        df.index = df.index + 1
-        # 显示小数点后面数字
-        pd.set_option('precision', 3)
-        return df.loc[dfree, cf]
     # 获取卡方分箱阀值，大于此值则不合并
-    threshold = get_chiSquare_distuibution(dfree=dfree, cf=cf)
+    threshold = get_chi_square_distribution(d_free=n_bins - 1, c_f=cf)
 
     while df.shape[0] > n_bins:
         min_index = None
         min_chi_score = None
         for i in range(df.shape[0] - 1):
             # 计算相邻两个分箱的卡方值
-            i_value = df.loc[i,['label_0_count','label_1_count','max_value']].values
-            i_value_next = df.loc[i + 1,['label_0_count','label_1_count','max_value']].values
+            i_value = df.loc[
+                i, ['count_0', 'count_1', 'max_value']].values
+            i_value_next = df.loc[
+                i + 1, ['count_0', 'count_1', 'max_value']].values
             # 如果两个区域值一样，则直接合并，忽略卡方值
             if i_value[2] == i_value_next[2]:
                 chi_score = 0
             else:
-                label_total = i_value[0] + i_value_next[0] + i_value[1] + i_value_next[1]
+                label_total = i_value[0] + i_value_next[0] + i_value[1] + \
+                              i_value_next[1]
                 label_0_ratio = (i_value[0] + i_value_next[0]) / label_total
                 label_1_ratio = (i_value[1] + i_value_next[1]) / label_total
-                i_1_should = (i_value[0] + i_value[1]) * label_1_ratio
-                i_0_should = (i_value[0] + i_value[1]) * label_0_ratio
-                i_1_next_should = (i_value_next[0] + i_value_next[1]) * label_1_ratio
-                i_0_next_should = (i_value_next[0] + i_value_next[1]) * label_0_ratio
+                i_1_cal = (i_value[0] + i_value[1]) * label_1_ratio
+                i_0_cal = (i_value[0] + i_value[1]) * label_0_ratio
+                i_1_next_cal = (i_value_next[0] + i_value_next[
+                    1]) * label_1_ratio
+                i_0_next_cal = (i_value_next[0] + i_value_next[
+                    1]) * label_0_ratio
 
-                chi_part1 = 0 if i_0_should == 0 else (i_value[0] - i_0_should)**2 / i_0_should
-                chi_part2 = 0 if i_1_should == 0 else (i_value[1] - i_1_should) ** 2 / i_1_should
-                chi_part3 = 0 if i_0_next_should == 0 else (i_value_next[0] - i_0_next_should)**2 / i_0_next_should
-                chi_part4 = 0 if i_1_next_should == 0 else (i_value_next[1] - i_1_next_should)**2 / i_1_next_should
+                chi_part1 = 0 if i_0_cal == 0 \
+                    else (i_value[0] - i_0_cal) ** 2 / i_0_cal
+                chi_part2 = 0 if i_1_cal == 0 \
+                    else (i_value[1] - i_1_cal) ** 2 / i_1_cal
+                chi_part3 = 0 if i_0_next_cal == 0 \
+                    else (i_value_next[0] - i_0_next_cal) ** 2 / i_0_next_cal
+                chi_part4 = 0 if i_1_next_cal == 0 \
+                    else (i_value_next[1] - i_1_next_cal) ** 2 / i_1_next_cal
 
                 chi_score = chi_part1 + chi_part2 + chi_part3 + chi_part4
             # 找到合并后最小的卡方值
@@ -299,11 +310,13 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=None, return_bins
 
         if min_chi_score < threshold:
             # 将差异最小的相邻分箱，进行合并
-            df.loc[min_index,'label_0_count'] = df.loc[min_index,'label_0_count'] + df.loc[min_index + 1,'label_0_count']
-            df.loc[min_index, 'label_1_count'] = df.loc[min_index, 'label_1_count'] + df.loc[min_index + 1, 'label_1_count']
-            df.loc[min_index,'max_value'] = df.loc[min_index + 1, 'max_value']
-            df.drop([min_index + 1],inplace=True)
-            df.reset_index(inplace=True,drop=True)
+            df.loc[min_index, 'count_0'] = \
+                df.loc[min_index, 'count_0'] + df.loc[min_index + 1, 'count_0']
+            df.loc[min_index, 'count_1'] = \
+                df.loc[min_index, 'count_1'] + df.loc[min_index + 1, 'count_1']
+            df.loc[min_index, 'max_value'] = df.loc[min_index + 1, 'max_value']
+            df.drop([min_index + 1], inplace=True)
+            df.reset_index(inplace=True, drop=True)
         else:
             break
     # 获取分箱结果
@@ -316,6 +329,8 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=None, return_bins
     if nan is not None:
         out = fillna(out, nan).astype(np.int)
     if return_bins:
+        bins[0] = -np.inf
+        bins[-1] = np.inf
         return out, bins
     else:
         return out
