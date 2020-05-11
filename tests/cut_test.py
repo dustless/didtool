@@ -30,6 +30,13 @@ class TestCut(unittest.TestCase):
         expect_out = [0, 1, 1, 1, 2, 2, 2, 3, -1, -1]
         self.assertListEqual(list(out), expect_out)
 
+    def test_chi_square_cut(self):
+        x = [0, 1, 2, 2, 3, 5, 6, 10, np.nan, np.nan]
+        target = [0, 0, 1, 0, 1, 0, 1, 1, 1, 1]
+        out, bins = didtool.chi_square_cut(x, target, 4, return_bins=True)
+        expect_out = [0, 0, 1, 1, 1, 2, 3, 3, np.nan, np.nan]
+        self.assertListEqual(list(out), expect_out)
+
     def test_cut_with_bins(self):
         x = [0, 1, 2, 2, 3, 6, 8, 10, np.nan]
         out, bins = didtool.step_cut(x, 4, nan=-1, return_bins=True)
