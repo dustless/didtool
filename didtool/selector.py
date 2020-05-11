@@ -37,7 +37,7 @@ class Selector:
     --------
 
     drop_cols : dict
-        Dictionary of operations run and features identified for removal
+        # Hold all columns dropped
 
     missing_stats : DataFrame
         The fraction of missing values for all features
@@ -71,8 +71,8 @@ class Selector:
         self.record_correlated = None  # record cols dropped by correlated
         self.importance_stats = None
 
-        # Dictionary to hold columns removed by operations
-        self.drop_cols = {}
+        # Hold all columns dropped
+        self.drop_cols = []
 
     def drop_missing(self, missing_threshold=0.9):
         """
@@ -92,11 +92,11 @@ class Selector:
         to_drop_df = missing_df[missing_df.missing_rate > missing_threshold]
         to_drop = list(to_drop_df.index.values)
 
-        self.drop_cols['missing'] = to_drop
+        self.drop_cols.extend(to_drop)
         self.data = self.data.drop(columns=to_drop)
 
         print('%d features with greater than %0.2f missing values.\n' %
-              (len(self.drop_cols['missing']), missing_threshold))
+              (len(to_drop), missing_threshold))
         return self
 
     def drop_low_iv(self, iv_threshold=0.02):
@@ -109,11 +109,11 @@ class Selector:
 
         to_drop_df = self.iv_stats[self.iv_stats.iv < iv_threshold]
         to_drop = list(to_drop_df.index.values)
-        self.drop_cols['low_iv'] = to_drop
+        self.drop_cols.extend(to_drop)
         self.data = self.data.drop(columns=to_drop)
 
         print('%d features with iv less than %0.2f.\n' %
-              (len(self.drop_cols['low_iv']), iv_threshold))
+              (len(to_drop), iv_threshold))
         return self
 
     def drop_correlated(self, corr_threshold=0.9):
@@ -174,11 +174,11 @@ class Selector:
 
         self.record_correlated = record_correlated
         to_drop = list(record_correlated["drop_feature"].values)
-        self.drop_cols['correlated'] = to_drop
+        self.drop_cols.extend(to_drop)
         self.data = self.data.drop(columns=to_drop)
 
-        print('%d features with a correlation magnitude greater than %0.2f.\n'
-              % (len(self.drop_cols['correlated']), corr_threshold))
+        print('%d features dropped with a correlation magnitude greater'
+              ' than %0.2f.\n' % (len(to_drop), corr_threshold))
         return self
 
     def drop_low_importance(self, cumulative_importance=0.95, run_times=10):
@@ -212,10 +212,7 @@ class Selector:
         if self.label is None:
             raise ValueError("No training labels provided.")
 
-        # Extract feature names
-        dropped = [col for cols in self.drop_cols.values() for col in cols]
-        feature_names = [col for col in list(self.data.columns.values)
-                         if col not in dropped]
+        feature_names = list(self.data.columns.values)
 
         # Empty array for feature importances
         feature_importance_values = np.zeros(len(feature_names))
@@ -227,7 +224,7 @@ class Selector:
                                        learning_rate=0.05, verbose=-1)
 
             train_features, valid_features, train_labels, valid_labels = \
-                train_test_split(self.data[feature_names], self.label,
+                train_test_split(self.data, self.label,
                                  test_size=0.2, stratify=self.label)
 
             # Train the model with early stopping
@@ -262,11 +259,11 @@ class Selector:
         to_drop = list(to_drop_df['feature'])
 
         self.importance_stats = importance_df
-        self.drop_cols['low_importance'] = to_drop
+        self.drop_cols.extend(to_drop)
         self.data = self.data.drop(columns=to_drop)
 
-        print('%d features do not contribute to cumulative importance of %0.2f.'
-              % (len(self.drop_cols['low_importance']), cumulative_importance))
+        print('\n%d features do not contribute to cumulative importance of'
+              ' %0.2f.' % (len(to_drop), cumulative_importance))
         return self
 
     def plot_missing(self):
@@ -298,6 +295,7 @@ class Selector:
             top_n = self.iv_stats.shape[0] - 1
 
         # Make a horizontal bar chart of feature iv
+        plt.rcParams = plt.rcParamsDefault
         plt.figure(figsize=(10, 6))
         ax = plt.subplot()
 

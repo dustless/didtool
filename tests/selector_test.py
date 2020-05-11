@@ -25,7 +25,7 @@ class TestSelector(unittest.TestCase):
         self.assertAlmostEqual(selector.missing_stats['missing_rate'][0], 1.0)
         self.assertAlmostEqual(selector.missing_stats['missing_rate'][1], 0.5)
         self.assertAlmostEqual(selector.missing_stats['missing_rate'][2], 0)
-        self.assertListEqual(selector.drop_cols["missing"], ["x3"])
+        self.assertListEqual(selector.drop_cols, ["x3"])
         self.assertEqual(selector.data.shape[1], 2)
 
     def test_drop_iv(self):
@@ -49,7 +49,7 @@ class TestSelector(unittest.TestCase):
         self.assertAlmostEqual(selector.iv_stats.loc['x1', 'iv'], 1.405716, 6)
         self.assertAlmostEqual(selector.iv_stats.loc['x2', 'iv'], 1.398188, 6)
         self.assertAlmostEqual(selector.iv_stats.loc['x3', 'iv'], 0.129772, 6)
-        self.assertListEqual(selector.drop_cols['low_iv'], ['x3'])
+        self.assertListEqual(selector.drop_cols, ['x3'])
         self.assertEqual(selector.data.shape[1], 2)
 
     def test_drop_correlated(self):
@@ -74,7 +74,7 @@ class TestSelector(unittest.TestCase):
         self.assertAlmostEqual(selector.iv_stats.loc['x3', 'iv'], 0.929362, 6)
         self.assertAlmostEqual(selector.corr_matrix.loc['x1', 'x2'], -1)
         self.assertAlmostEqual(selector.corr_matrix.loc['x1', 'x3'], -0.0887, 4)
-        self.assertListEqual(selector.drop_cols['correlated'], ['x1'])
+        self.assertListEqual(selector.drop_cols, ['x1'])
         self.assertEqual(selector.data.shape[1], 2)
 
     def test_drop_all(self):
@@ -89,12 +89,11 @@ class TestSelector(unittest.TestCase):
         print(selector.importance_stats)
 
         drop_cols = selector.drop_cols
-        self.assertListEqual(drop_cols['missing'], ['v13', 'v3', 'v12', 'v19'])
-        self.assertListEqual(drop_cols['low_iv'], ['v7', 'v10', 'v11'])
-        self.assertListEqual(drop_cols['correlated'], ['v4', 'v2', 'v14'])
-        # importance may change across runs
-        self.assertSetEqual(set(drop_cols['low_importance']),
-                            {'v1', 'v6', 'v20', 'v8', 'v5'})
+        self.assertSetEqual(
+            set(drop_cols),
+            {'v13', 'v3', 'v12', 'v19', 'v7', 'v10', 'v11', 'v4', 'v2', 'v14',
+             'v1', 'v6', 'v20', 'v8', 'v5'}
+        )
         # selector.plot_missing()
         # selector.plot_iv()
         # selector.plot_correlated(plot_all=True)

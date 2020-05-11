@@ -333,7 +333,7 @@ class LGBModelStacking:
             self.pipelines.append(pipeline)
 
     def train(self, early_stopping_rounds=20, eval_metric="binary_logloss",
-              save_learn_curve=False):
+              verbose=-1, save_learn_curve=False):
         """
         train model
 
@@ -344,6 +344,12 @@ class LGBModelStacking:
             score stops improving in recent `early_stopping_rounds` round(s).
         eval_metric: str(default='binary_logloss')
             usually use 'binary_logloss' or 'auc'
+        verbose : bool or int, optional (default=True)
+            Requires at least one evaluation data.
+            If True, the eval metric on the eval set is printed at each
+             boosting stage.
+            If int, the eval metric on the eval set is printed at every
+             ``verbose`` boosting stage.
         save_learn_curve : bool
             whether save learning curve of models
         """
@@ -356,7 +362,8 @@ class LGBModelStacking:
             self.pipelines[k].fit(
                 train_k[self.feature_names], train_k[self.target],
                 model__early_stopping_rounds=early_stopping_rounds,
-                model__eval_set=eval_set, model__eval_metric=eval_metric
+                model__eval_set=eval_set, model__eval_metric=eval_metric,
+                model__verbose=verbose
             )
             if save_learn_curve:
                 result = self.models[k].evals_result_
