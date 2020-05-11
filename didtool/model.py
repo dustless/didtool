@@ -178,7 +178,7 @@ class LGBModelSingle:
                 result[result[self.group_col] == -1]['prob']))
         return result
 
-    def save_feature_importance(self):
+    def save_feature_importance(self, plot=True):
         """
         Save feature importance
         """
@@ -195,12 +195,13 @@ class LGBModelSingle:
         feature_file.writelines([col + '\n' for col in self.used_features])
         feature_file.close()
 
-        plt.figure()
-        df_imp[:20].plot.barh(x='feature', y='importance', legend=False,
-                              figsize=(18, 10))
-        plt.title('Model Feature Importances')
-        plt.xlabel('Feature Importance')
-        plt.savefig(os.path.join(self.out_path, 'feature_importance.png'))
+        if plot:
+            plt.figure()
+            df_imp[:20].plot.barh(x='feature', y='importance', legend=False,
+                                  figsize=(18, 10))
+            plt.title('Model Feature Importances')
+            plt.xlabel('Feature Importance')
+            plt.savefig(os.path.join(self.out_path, 'feature_importance.png'))
 
     def export(self, export_pmml=True, export_pkl=False):
         """
@@ -213,6 +214,9 @@ class LGBModelSingle:
         export_pkl: bool(default=False)
             export model as pkl file
         """
+        # save used features
+        self.save_feature_importance(False)
+
         date_str = time.strftime("%Y%m%d")
 
         if export_pmml:
@@ -384,7 +388,7 @@ class LGBModelStacking:
                 plt.savefig(
                     os.path.join(self.out_path, 'learn_curve_%d.png' % k))
 
-    def save_feature_importance(self):
+    def save_feature_importance(self, plot=True):
         """
         Save feature importance
         """
@@ -396,7 +400,8 @@ class LGBModelStacking:
             used_cols = list(df_imp[df_imp.importance > 0].feature.values)
             self.used_features.append(used_cols)
             # save importance stats
-            df_imp.sort_values(by='importance', ascending=False).to_csv(
+            df_imp = df_imp.sort_values(by='importance', ascending=False)
+            df_imp.to_csv(
                 os.path.join(self.out_path, "feature_importance_%d.csv" % i),
                 index=False
             )
@@ -407,13 +412,14 @@ class LGBModelStacking:
             feature_file.writelines([col + '\n' for col in used_cols])
             feature_file.close()
 
-            plt.figure()
-            df_imp[:20].plot.barh(x='feature', y='importance', legend=False,
-                                  figsize=(18, 10))
-            plt.title('Model(%d) Feature Importances' % i)
-            plt.xlabel('Feature Importance')
-            plt.savefig(
-                os.path.join(self.out_path, 'feature_importance_%d.png' % i))
+            if plot:
+                plt.figure()
+                df_imp[:20].plot.barh(x='feature', y='importance', legend=False,
+                                      figsize=(18, 10))
+                plt.title('Model(%d) Feature Importances' % i)
+                plt.xlabel('Feature Importance')
+                plt.savefig(os.path.join(self.out_path,
+                                         'feature_importance_%d.png' % i))
 
     def evaluate(self):
         """
@@ -442,7 +448,7 @@ class LGBModelStacking:
 
         train_res = result[result[self.group_col] >= 0]
         for k in range(self.n_fold):
-            print("**** model_%d ****" % k)
+            print("\n**** model_%d ****" % k)
             print('train AUC: %.5f' % roc_auc_score(
                 train_res[train_res[self.group_col] != k][self.target],
                 train_res[train_res[self.group_col] != k]['prob']))
@@ -450,7 +456,7 @@ class LGBModelStacking:
                 train_res[train_res[self.group_col] == k][self.target],
                 train_res[train_res[self.group_col] == k]['prob']))
 
-        print("**** model_stacking ****")
+        print("\n**** model_stacking ****")
         print('total train AUC: %.5f' % roc_auc_score(
             result[result[self.group_col] >= 0][self.target],
             result[result[self.group_col] >= 0]['prob']))
@@ -470,6 +476,9 @@ class LGBModelStacking:
         export_pkl: bool(default=False)
             export model as pkl file
         """
+        # save used features
+        self.save_feature_importance(False)
+
         date_str = time.strftime("%Y%m%d")
 
         for i in range(self.n_fold):

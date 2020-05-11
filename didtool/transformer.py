@@ -159,7 +159,7 @@ class SingleWOETransformer(TransformerMixin):
         plt.xticks(range(n_bins), self.woe_df['bin_range'], rotation=90)
         plt.subplots_adjust(bottom=0.3)
 
-        ax1 = fig.add_subplot()
+        ax1 = fig.add_subplot(111)
         ax1.plot(range(n_bins), self.woe_df['woe'], 'og-', label='woe')
         ax1.plot(range(n_bins), self.woe_df['iv_list'], 'oy-', label='iv')
         ax1.axhline(y=0, ls=":", c="grey")

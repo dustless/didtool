@@ -148,7 +148,7 @@ def psi(expect_score, actual_score, n_bins=DEFAULT_BINS, plot=False):
         df = pd.DataFrame({"expect": expect, "actual": actual})
         df.plot(kind="bar")
         plt.legend(loc="best")
-        plt.title("psi={}".format(psi))
+        plt.title("psi={}".format(psi_value))
         plt.show()
     return psi_value
 
