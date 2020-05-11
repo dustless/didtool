@@ -54,6 +54,9 @@ class TestSelector(unittest.TestCase):
 
     def test_drop_correlated(self):
         df = pd.DataFrame({
+            "x0": [12, 12, 12, 11, 11, 11, 10, 10, 10, 9, 9, 9,
+                   8, 8, 8, 7, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4, 4,
+                   3, 3, 3, 2, 2, 2, 1, 1, 1, 0, 0, 0],
             "x1": [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4,
                    5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9,
                    10, 10, 10, 11, 11, 11, np.nan, np.nan, np.nan],
@@ -69,12 +72,14 @@ class TestSelector(unittest.TestCase):
         })
         selector = Selector(df.drop("target", axis=1), df["target"])
         selector.drop_correlated(0.5)
+        self.assertAlmostEqual(selector.iv_stats.loc['x0', 'iv'], 1.455369, 6)
         self.assertAlmostEqual(selector.iv_stats.loc['x1', 'iv'], 1.405716, 6)
         self.assertAlmostEqual(selector.iv_stats.loc['x2', 'iv'], 1.455369, 6)
         self.assertAlmostEqual(selector.iv_stats.loc['x3', 'iv'], 0.929362, 6)
+        self.assertAlmostEqual(selector.corr_matrix.loc['x0', 'x2'], 1)
         self.assertAlmostEqual(selector.corr_matrix.loc['x1', 'x2'], -1)
         self.assertAlmostEqual(selector.corr_matrix.loc['x1', 'x3'], -0.0887, 4)
-        self.assertListEqual(selector.drop_cols, ['x1'])
+        self.assertListEqual(selector.drop_cols, ['x1', 'x2'])
         self.assertEqual(selector.data.shape[1], 2)
 
     def test_drop_all(self):

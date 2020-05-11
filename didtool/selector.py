@@ -137,14 +137,15 @@ class Selector:
         corr_matrix = self.data.corr()
         self.corr_matrix = corr_matrix
 
-        # Extract the upper triangle of the correlation matrix
-        upper = corr_matrix.where(
-            np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+        # Extract the upper&down triangle of the correlation matrix except the
+        # diagonal line
+        corr = corr_matrix.where(~np.eye(corr_matrix.shape[0]).astype(np.bool))
+        print(corr)
 
         # Select the features with correlations above the threshold
         # Need to use the absolute value
-        corr_cols = [column for column in upper.columns if
-                     any(upper[column].abs() > corr_threshold)]
+        corr_cols = [column for column in corr.columns if
+                     any(corr[column].abs() > corr_threshold)]
 
         # Dataframe to hold correlated pairs
         record_correlated = pd.DataFrame(
@@ -152,13 +153,14 @@ class Selector:
 
         # Iterate through the columns to drop to record pairs of
         # correlated features
-        sorted(corr_cols, key=lambda x: self.iv_stats['iv'][x], reverse=True)
+        corr_cols = sorted(corr_cols, key=lambda x: self.iv_stats['iv'][x],
+                           reverse=True)
         for col in corr_cols:
             if col in record_correlated["drop_feature"].values:
                 continue
             # Find the correlated features
             corr_features = list(
-                upper.index[upper[col].abs() > corr_threshold])
+                corr.index[corr[col].abs() > corr_threshold])
 
             for feature in corr_features:
                 if feature in record_correlated["drop_feature"].values:
