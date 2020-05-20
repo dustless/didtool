@@ -9,7 +9,7 @@ import seaborn as sns
 
 from .cut import DEFAULT_BINS, cut
 
-sns.set(rc={"figure.figsize": (8, 4)})
+sns.set(rc={"figure.figsize": (10, 8)})
 
 
 def probability(y, group_mask=None):
@@ -230,7 +230,7 @@ def plot_roc(y_true, y_pred, out_path=None, file_name='roc.png'):
     auc_value = auc(fpr, tpr)
 
     # roc curve
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(8, 8))
     plt.plot([0, 1], [0, 1], 'k--')
     plt.plot(fpr, tpr, lw=1, label='ROC')
     plt.ylim([0.0, 1.0])
@@ -267,7 +267,7 @@ def compare_roc(y_true_list, y_pred_list, model_name_list, out_path=None,
     file_name : str
         save figure as `file_name`
     """
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(8, 8))
     for i in range(len(y_true_list)):
         fpr, tpr, _ = roc_curve(y_true_list[i], y_pred_list[i])
         ks_value = np.max(tpr - fpr)
@@ -308,7 +308,7 @@ def plot_pr_curve(y_true, y_pred, out_path=None, file_name='pr.png'):
     file_name : str
         save figure as `file_name`
     """
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(8, 8))
     precision, recall, thresholds = precision_recall_curve(y_true, y_pred)
     average_precision = average_precision_score(y_true, y_pred)
     plt.step(recall, precision, color='b', alpha=0.2, where='post')
@@ -344,7 +344,7 @@ def plot_pr_threshold(y_true, y_pred, out_path=None,
     file_name : str
         save figure as `file_name`
     """
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(8, 8))
     precision, recall, thresholds = precision_recall_curve(y_true, y_pred)
     thresholds = np.append(thresholds, 1.0)
     plt.plot(thresholds, precision, lw=1, label='Precision')

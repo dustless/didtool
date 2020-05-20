@@ -158,13 +158,13 @@ class ScoreCardTransformer(BaseEstimator, TransformerMixin):
             (2) good hits is zero in the low p-value bins
             (3) good/bad hits is zero in the middle bins
         """
-        df['adjusted_odds'] = df['odds']
-        df['adjusted_odds'][np.isinf(df['adjusted_odds'])] = 0
-        df['adjusted_odds'].fillna(0, inplace=True)
-        max_odds = max(df['adjusted_odds'])
-        max_odds_index = df['adjusted_odds'].argmax()
-        min_odds = min(df[df['adjusted_odds'] != 0]['adjusted_odds'])
-        min_odds_index = df[df['adjusted_odds'] != 0]['adjusted_odds'].argmin()
+        odds = df['odds'].fillna(0).values
+        odds[np.isinf(odds)] = 0
+
+        max_odds = odds.max()
+        max_odds_index = odds.argmax()
+        min_odds = odds[odds > 0].min()
+        min_odds_index = np.where(odds == min_odds)[0][0]
 
         # adjust odds in bins with zero good hits from min_odds_index to 0
         is_zero_good = False
@@ -173,7 +173,7 @@ class ScoreCardTransformer(BaseEstimator, TransformerMixin):
                 is_zero_good = True
             if is_zero_good:
                 min_odds /= 2
-                df['adjusted_odds'][i] = min_odds
+                odds[i] = min_odds
 
         # adjust odds in bins with zero bad hits from max_odds_index to n_bins
         is_zero_bad = False
@@ -182,16 +182,17 @@ class ScoreCardTransformer(BaseEstimator, TransformerMixin):
                 is_zero_bad = True
             if is_zero_bad:
                 max_odds *= 2
-                df['adjusted_odds'][i] = max_odds
+                odds[i] = max_odds
 
         # adjust odds in bins from min_odds_index to max_odds_index
         for i in range(min_odds_index + 1, max_odds_index - 1):
-            if df['adjusted_odds'][i] == 0.0:
-                if df['adjusted_odds'][i + 1] != 0.0:
-                    df['adjusted_odds'][i] = (df['adjusted_odds'][i - 1] +
-                                              df['adjusted_odds'][i + 1]) / 2
+            if odds[i] == 0.0:
+                if odds[i + 1] != 0.0:
+                    odds[i] = (odds[i - 1] + odds[i + 1]) / 2
                 else:
-                    df['adjusted_odds'][i] = df['adjusted_odds'][i - 1]
+                    odds[i] = odds[i - 1]
+
+        df['adjusted_odds'] = odds
         return df
 
     def __calc_mapping_df(self):
