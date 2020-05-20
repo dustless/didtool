@@ -258,7 +258,7 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
     df = pd.DataFrame({'feature': x[~mask], 'label': target[~mask]})
 
     # 对变量按属性值从小到大排序
-    df.sort_index(axis=0, ascending=True, by='feature', inplace=True)
+    df.sort_values(by='feature', ascending=True, inplace=True)
     # 计算每一个属性值对应的卡方统计量等信息
     df['count_1'] = df['label']
     df['count_0'] = 1 - df['label']
