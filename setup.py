@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="didtool",
-    version="0.0.1",
+    version="0.0.2",
     author="dustless",
     author_email="wuchenghui927@126.com",
     description="Tool set for feature engineering & modeling",
@@ -26,5 +26,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.6',
 )
