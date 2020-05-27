@@ -7,7 +7,7 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, \
     average_precision_score
 import seaborn as sns
 
-from .cut import DEFAULT_BINS, cut
+from .cut import DEFAULT_BINS, cut, step_cut, cut_with_bins
 
 sns.set(rc={"figure.figsize": (10, 8)})
 
@@ -120,14 +120,14 @@ def iv(x, y, is_continuous=True, **kwargs):
     return iv_discrete(x, y)
 
 
-def psi(expect_score, actual_score, n_bins=DEFAULT_BINS, plot=False):
+def psi(expected_array, actual_array, n_bins=DEFAULT_BINS, plot=False):
     """
-    Compute IV for continuous feature.
+    Compute PSI for continuous var.
 
     Parameters
     ----------
-    expect_score : array-like
-    actual_score: array-like
+    expected_array : array-like
+    actual_array: array-like
     n_bins : int, default DEFAULT_BINS
         Defines the number of equal-width bins in the range of `x`.
     plot : bool
@@ -137,19 +137,43 @@ def psi(expect_score, actual_score, n_bins=DEFAULT_BINS, plot=False):
     -------
     psi_value : float
     """
-    expect_cut, cut_bins = pd.cut(expect_score, n_bins, retbins=True)
-    expect = expect_cut.value_counts() / np.sum(expect_cut.value_counts())
-    cut_bins = expect_cut.unique().categories
-    actual_cut = pd.cut(actual_score, bins=cut_bins)
-    actual = actual_cut.value_counts() / np.sum(actual_cut.value_counts())
+    expected_bin_values, bins = step_cut(expected_array, n_bins,
+                                         return_bins=True)
+    has_nan = any(expected_bin_values == -1)
 
-    actual[actual == 0] = 1e-10
-    expect[expect == 0] = 1e-10
+    def get_bins_cnt(bin_values):
+        bins_cnt = []
+        if has_nan:
+            bins_cnt.append((bin_values == -1).sum())
+        for i in range(0, len(bins) - 1):
+            bins_cnt.append((bin_values == i).sum())
+        return np.array(bins_cnt)
 
-    psi_value = np.sum((actual - expect) * np.log(actual / expect))
+    expected_cnt = get_bins_cnt(expected_bin_values)
+    expected_rate = expected_cnt / len(expected_array)
+
+    # cut actual array with the same bins as expected array
+    actual_bin_values = cut_with_bins(actual_array, bins)
+    actual_cnt = get_bins_cnt(actual_bin_values)
+    actual_rate = actual_cnt / len(actual_array)
+
+    # avoid zero values
+    actual_rate[actual_rate == 0] = 1e-10
+    expected_rate[expected_rate == 0] = 1e-10
+
+    psi_value = np.sum((actual_rate - expected_rate) *
+                       np.log(actual_rate / expected_rate))
+
     if plot:
-        df = pd.DataFrame({"expect": expect, "actual": actual})
+        bin_ranges = []
+        if has_nan:
+            bin_ranges.append('NA')
+        for i in range(len(bins) - 1):
+            bin_ranges.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
+        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate},
+                          index=bin_ranges)
         df.plot(kind="bar")
+        plt.subplots_adjust(bottom=0.2)
         plt.legend(loc="best")
         plt.title("psi={}".format(psi_value))
         plt.show()

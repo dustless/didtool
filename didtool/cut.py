@@ -12,7 +12,7 @@ from scipy.stats import chi2
 DEFAULT_BINS = 10
 
 
-def step_cut(x, n_bins=DEFAULT_BINS, nan=None, return_bins=False):
+def step_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False):
     """
     Cut values into discrete intervals by step.
     Parameters
@@ -48,7 +48,7 @@ def step_cut(x, n_bins=DEFAULT_BINS, nan=None, return_bins=False):
         return out
 
 
-def quantile_cut(x, n_bins=DEFAULT_BINS, nan=None, return_bins=False):
+def quantile_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False):
     """
     Cut values into discrete intervals by quantile.
 

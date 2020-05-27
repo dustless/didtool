@@ -64,9 +64,19 @@ def split_data_random(data, train_size=0.6, val_size=0.2, group_col='group'):
     data : DataFrame
         data with `group_col` column
     """
+    if not 0 < train_size < 1:
+        raise Exception("train_size should be in range (0.0, 1.0)")
+    if not 0 < val_size < 1:
+        raise Exception("val_size should be in range (0.0, 1.0)")
+    if train_size + val_size > 1.0:
+        raise Exception("train_size + val_size should not be greater than 1.0")
+
     train, val = train_test_split(data, train_size=train_size, random_state=1)
-    val, _ = train_test_split(val, train_size=val_size / (1 - train_size),
-                              random_state=1)
+    # if train_size + val_size < 1.0,
+    # then test_size = 1.0 - train_size - val_size
+    if train_size + val_size < 1.0:
+        val, _ = train_test_split(val, train_size=val_size / (1 - train_size),
+                                  random_state=1)
     train_mask = np.zeros(data.shape[0], dtype=bool)
     train_mask[train.index] = True
     val_mask = np.zeros(data.shape[0], dtype=bool)
@@ -125,4 +135,3 @@ def split_data_stacking(data, oot_mask, n_fold=5, random_state=None,
                     how="left", on="index")
     data[group_col] = data[group_col].fillna(-1).astype(np.int)
     return data.drop("index", axis=1)
-
