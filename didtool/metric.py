@@ -61,7 +61,7 @@ def woe(prob1, prob0):
     return np.log(prob1 / prob0)
 
 
-def iv_discrete(x, y):
+def _iv_discrete(x, y):
     """
     Compute IV for discrete feature.
 
@@ -81,7 +81,7 @@ def iv_discrete(x, y):
     return iv_value
 
 
-def iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt', **kwargs):
+def _iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt', **kwargs):
     """
     Compute IV for continuous feature.
     Parameters
@@ -98,7 +98,7 @@ def iv_continuous(x, y, n_bins=DEFAULT_BINS, cut_method='dt', **kwargs):
     iv : IV of feature x
     """
     x_bin = cut(x, y, method=cut_method, n_bins=n_bins, **kwargs)
-    return iv_discrete(x_bin, y)
+    return _iv_discrete(x_bin, y)
 
 
 def iv(x, y, is_continuous=True, **kwargs):
@@ -116,11 +116,116 @@ def iv(x, y, is_continuous=True, **kwargs):
     (name, iv) : IV of feature x
     """
     if is_continuous or len(np.unique(x)) / len(x) > 0.5:
-        return iv_continuous(x, y, **kwargs)
-    return iv_discrete(x, y)
+        return _iv_continuous(x, y, **kwargs)
+    return _iv_discrete(x, y)
 
 
-def psi(expected_array, actual_array, n_bins=DEFAULT_BINS, plot=False):
+def _psi_discrete(expected_array, actual_array, detail=False):
+    """
+    Compute PSI for discrete var.
+
+    Parameters
+    ----------
+    expected_array : array-like
+    actual_array: array-like
+    detail : bool
+        whether return expect and actual distribution DataFrame
+
+    Returns
+    -------
+    psi_value : float
+    psi_df : DataFrame, only returned when `detail` is True
+        detailed distribution of expect and actual arrays
+    """
+    groups = np.sort(np.union1d(expected_array.unique(), actual_array.unique()))
+
+    def _get_group_cnt(arr, groups):
+        group_cnt = []
+        for group in groups:
+            group_cnt.append((arr == group).sum())
+        return np.array(group_cnt)
+
+    expected_cnt = _get_group_cnt(expected_array, groups)
+    expected_rate = expected_cnt / len(expected_array)
+
+    actual_cnt = _get_group_cnt(actual_array, groups)
+    actual_rate = actual_cnt / len(actual_array)
+
+    # avoid zero values
+    actual_rate[actual_rate == 0] = 1e-10
+    expected_rate[expected_rate == 0] = 1e-10
+
+    psi_value = np.sum((actual_rate - expected_rate) *
+                       np.log(actual_rate / expected_rate))
+
+    if detail:
+        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate},
+                          index=groups)
+        return psi_value, df
+    return psi_value
+
+
+def _psi_continuous(expected_array, actual_array, n_bins=DEFAULT_BINS,
+                    detail=False):
+    """
+    Compute PSI for continuous var.
+
+    Parameters
+    ----------
+    expected_array : array-like
+    actual_array: array-like
+    n_bins : int, default DEFAULT_BINS
+        Defines the number of equal-width bins in the range of `x`.
+    detail : bool
+        whether return expect and actual distribution DataFrame
+
+    Returns
+    -------
+    psi_value : float
+    psi_df : DataFrame, only returned when `detail` is True
+        detailed distribution of expect and actual arrays
+    """
+    expected_bin_values, bins = step_cut(expected_array, n_bins,
+                                         return_bins=True)
+    # cut actual array with the same bins as expected array
+    actual_bin_values = cut_with_bins(actual_array, bins)
+    has_nan = any(expected_bin_values == -1) or any(actual_bin_values == -1)
+
+    def _get_bins_cnt(bin_values):
+        bins_cnt = []
+        if has_nan:
+            bins_cnt.append((bin_values == -1).sum())
+        for i in range(0, len(bins) - 1):
+            bins_cnt.append((bin_values == i).sum())
+        return np.array(bins_cnt)
+
+    expected_cnt = _get_bins_cnt(expected_bin_values)
+    expected_rate = expected_cnt / len(expected_array)
+
+    actual_cnt = _get_bins_cnt(actual_bin_values)
+    actual_rate = actual_cnt / len(actual_array)
+
+    # avoid zero values
+    actual_rate[actual_rate == 0] = 1e-10
+    expected_rate[expected_rate == 0] = 1e-10
+
+    psi_value = np.sum((actual_rate - expected_rate) *
+                       np.log(actual_rate / expected_rate))
+
+    if detail:
+        bin_ranges = []
+        if has_nan:
+            bin_ranges.append('NA')
+        for i in range(len(bins) - 1):
+            bin_ranges.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
+        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate},
+                          index=bin_ranges)
+        return psi_value, df
+    return psi_value
+
+
+def psi(expected_array, actual_array, n_bins=DEFAULT_BINS, plot=False,
+        is_continuous=True):
     """
     Compute PSI for continuous var.
 
@@ -132,46 +237,20 @@ def psi(expected_array, actual_array, n_bins=DEFAULT_BINS, plot=False):
         Defines the number of equal-width bins in the range of `x`.
     plot : bool
         whether plot expect and actual distributions
+    is_continuous : bool, default=True
+        whether the input array is continuous
 
     Returns
     -------
     psi_value : float
     """
-    expected_bin_values, bins = step_cut(expected_array, n_bins,
-                                         return_bins=True)
-    has_nan = any(expected_bin_values == -1)
-
-    def get_bins_cnt(bin_values):
-        bins_cnt = []
-        if has_nan:
-            bins_cnt.append((bin_values == -1).sum())
-        for i in range(0, len(bins) - 1):
-            bins_cnt.append((bin_values == i).sum())
-        return np.array(bins_cnt)
-
-    expected_cnt = get_bins_cnt(expected_bin_values)
-    expected_rate = expected_cnt / len(expected_array)
-
-    # cut actual array with the same bins as expected array
-    actual_bin_values = cut_with_bins(actual_array, bins)
-    actual_cnt = get_bins_cnt(actual_bin_values)
-    actual_rate = actual_cnt / len(actual_array)
-
-    # avoid zero values
-    actual_rate[actual_rate == 0] = 1e-10
-    expected_rate[expected_rate == 0] = 1e-10
-
-    psi_value = np.sum((actual_rate - expected_rate) *
-                       np.log(actual_rate / expected_rate))
+    if is_continuous:
+        psi_value, df = _psi_continuous(expected_array, actual_array, n_bins,
+                                        detail=True)
+    else:
+        psi_value, df = _psi_discrete(expected_array, actual_array, detail=True)
 
     if plot:
-        bin_ranges = []
-        if has_nan:
-            bin_ranges.append('NA')
-        for i in range(len(bins) - 1):
-            bin_ranges.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
-        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate},
-                          index=bin_ranges)
         df.plot(kind="bar")
         plt.subplots_adjust(bottom=0.2)
         plt.legend(loc="best")

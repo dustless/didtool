@@ -1,12 +1,13 @@
 from multiprocessing import Pool, cpu_count
 
 import pandas as pd
+import numpy as np
 
-from .metric import iv
+from .metric import iv, psi
 from .utils import is_categorical
 
 
-def iv_with_name(x, y, name='feature', **kwargs):
+def _iv_with_name(x, y, name='feature', **kwargs):
     """
     Compute IV for continuous feature.
     Parameters
@@ -48,7 +49,7 @@ def iv_all(frame, y, exclude_cols=None, **kwargs):
         if not (exclude_cols and name in exclude_cols):
             kwds = kwargs.copy()
             kwds['name'] = name
-            r = pool.apply_async(iv_with_name, args=(x, y), kwds=kwds)
+            r = pool.apply_async(_iv_with_name, args=(x, y), kwds=kwds)
             res.append(r)
 
     pool.close()
@@ -60,3 +61,59 @@ def iv_all(frame, y, exclude_cols=None, **kwargs):
         by='iv',
         ascending=False,
     ).set_index('feature')
+
+
+def psi_all(data, features=None, group_col='month',
+            expected_data=None):
+    """
+    Compute psi of features group by group if `expected_data` is None.
+    If `expected_data` specified, compute psi for each group compared to
+    expected data.
+
+    Parameters
+    ----------
+    data : DataFrame
+        frame that will be calculate psi
+    features : array-like, default=None
+        features that need to be analyzed. All features should be in `data`.
+        If `feature_names` not specified, all feature
+    group_col: str, default='month'
+        group column name used to group data. This colume should be in `data`.
+    expected_data: DataFrame, default=None
+        expected data specified, same columns as data
+
+    Returns
+    -------
+    DataFrame: psi of features in each group with the feature_names as row index
+    """
+    if group_col not in data:
+        raise Exception("%s is not in `data`" % group_col)
+
+    if not features:
+        features = [col for col in data.columns.values if col != group_col]
+    else:
+        for feature in features:
+            if feature not in data:
+                raise Exception("%s is not in `data`" % feature)
+
+    if expected_data is not None:
+        for col in features:
+            if col not in expected_data:
+                raise Exception("%s is not in `expected_data`" % col)
+
+    group_by_group = expected_data is None  # compute method
+    groups = np.sort(data[group_col].unique())
+    psi_df = pd.DataFrame(columns=groups, index=features)
+
+    for i in range(0, len(groups)):
+        if group_by_group:
+            if i == 0:
+                continue
+            expected_data = data[data[group_col] == groups[i - 1]]
+        actual = data[data[group_col] == groups[i]]
+        psi_df.loc[:, groups[i]] = \
+            [psi(expected_data[col], actual[col],
+                 is_continuous=not is_categorical(data[col]))
+             for col in features]
+
+    return psi_df

@@ -96,8 +96,8 @@ class TestSelector(unittest.TestCase):
         drop_cols = selector.drop_cols
         self.assertSetEqual(
             set(drop_cols),
-            {'v13', 'v3', 'v12', 'v19', 'v7', 'v10', 'v11', 'v4', 'v2', 'v14',
-             'v1', 'v6', 'v20', 'v8', 'v5'}
+            {'v13', 'v3', 'v12', 'v19', 'v7', 'v10', 'v11', 'v4', 'v16', 'v20',
+             'v1', 'v9', 'v6', 'v8', 'v5'}
         )
         # selector.plot_missing()
         # selector.plot_iv()
