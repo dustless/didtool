@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="didtool",
-    version="0.0.2",
+    version="0.0.3",
     author="dustless",
     author_email="wuchenghui927@126.com",
     description="Tool set for feature engineering & modeling",
@@ -17,7 +17,7 @@ setuptools.setup(
         "seaborn>=0.10.1",
         "scikit-learn>=0.21.3",
         "lightgbm>=2.3.1",
-        "sklearn2pmml==0.52.1",
+        "sklearn2pmml>=0.52.1",
         "pandas",
         "numpy",
     ],
