@@ -465,3 +465,71 @@ def plot_pr_threshold(y_true, y_pred, out_path=None,
         plt.savefig(os.path.join(out_path, file_name))
     else:
         plt.show()
+
+def plot_ks(y_pred,y_true,out_path=None,file_name='pr_ks.png'):
+    """
+      Compute ks curve and find the max ks value.
+
+      Parameters
+      ----------
+
+      y_true : array, shape = [n_samples]
+          True binary labels.
+
+      y_pred : array, shape = [n_samples]
+          target scores, predicted by estimator
+
+      out_path : str or None
+          if out_path specified, save figure to `out_path`
+
+      file_name : str
+          save figure as `file_name`
+      """
+    y_true_series=pd.Series(y_true.tolist())
+    y_pred_series = pd.Series(y_pred.tolist())
+    ksds = pd.concat([y_true_series, y_pred_series], axis=1)
+    ksds.columns = ['bad', 'pred']
+    ksds['good'] = 1 - ksds.bad
+    ksds1 = ksds.sort_values(by=['pred', 'bad'], ascending=[False, True])
+    ksds1.index = range(len(ksds1.pred))
+    ksds1['cumsum_good1'] = 1.0 * ksds1.good.cumsum() / sum(ksds1.good)
+    ksds1['cumsum_bad1'] = 1.0 * ksds1.bad.cumsum() / sum(ksds1.bad)
+    ksds2 = ksds.sort_values(by=['pred', 'bad'], ascending=[False, False])
+    ksds2.index = range(len(ksds2.pred))
+    ksds2['cumsum_good2'] = 1.0 * ksds2.good.cumsum() / sum(ksds2.good)
+    ksds2['cumsum_bad2'] = 1.0 * ksds2.bad.cumsum() / sum(ksds2.bad)
+    ksds = ksds1[['cumsum_good1', 'cumsum_bad1']]
+
+    ksds['cumsum_good2'] = ksds2['cumsum_good2']
+    ksds['cumsum_bad2'] = ksds2['cumsum_bad2']
+
+    ksds['cumsum_good'] = (ksds['cumsum_good1'] + ksds['cumsum_good2']) / 2
+    ksds['cumsum_bad'] = (ksds['cumsum_bad1'] + ksds['cumsum_bad2']) / 2
+    ksds['ks'] = ksds['cumsum_bad'] - ksds['cumsum_good']
+
+    ksds['tile0'] = range(1, len(ksds.ks) + 1)
+    ksds['tile'] = 1.0 * ksds['tile0'] / len(ksds['tile0'])
+    qe = list(np.arange(0, 1, 1.0 / 100))
+    qe.append(1)
+    qe = qe[1:]
+    ks_index = pd.Series(ksds.index)
+    ks_index = ks_index.quantile(q=qe)
+    ks_index = np.ceil(ks_index).astype(int)
+    ks_index = list(ks_index)
+    ksds = ksds.loc[ks_index]
+    ksds0 = np.array([[0, 0, 0, 0]])
+    ksds0 = pd.DataFrame(ksds0)
+    ksds = pd.concat([ksds0, ksds], axis=0)
+    ksds = ksds[['tile', 'cumsum_good', 'cumsum_bad', 'ks']]
+    ksds.columns = ['tile', 'cumsum_good', 'cumsum_bad', 'ks']
+    ks_value = ksds.ks.max()
+    ks_pop = ksds.tile[ksds.ks.idxmax()]
+
+    plt.plot(ksds.tile, ksds.cumsum_good, label='cum_good', color='blue', linestyle='-', linewidth=2)
+    plt.plot(ksds.tile, ksds.cumsum_bad, label='cum_bad', color='red', linestyle='-', linewidth=2)
+    plt.plot(ksds.tile, ksds.ks, label='ks', color='green', linestyle='-', linewidth=2)
+    plt.title('KS=%s ' % np.round(ks_value, 4) + 'at Pop=%s' % np.round(ks_pop, 4), fontsize=15)
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    else:
+        plt.show()

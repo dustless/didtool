@@ -8,7 +8,10 @@ from sklearn.metrics.ranking import roc_auc_score
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
 import matplotlib.pyplot as plt
-
+from sklearn.datasets import make_classification
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import KFold, cross_val_score
+from bayes_opt import BayesianOptimization
 
 class LGBModelSingle:
     """
@@ -246,6 +249,56 @@ class LGBModelSingle:
             from sklearn.externals import joblib
             pkl_file = "%s_%s.pkl" % (self.model_name, date_str)
             joblib.dump(self.model, os.path.join(self.out_path, pkl_file))
+
+    def model_cv(self, **params):
+
+
+        for k, v in params.items():
+            if k in self.int_sets:
+                self.model_params[k] = int(v)
+            elif k in self.float_sets:
+                self.model_params[k] = float(v)
+        clf = lgb.LGBMClassifier(**self.model_params)
+        clf.fit(self.X_train, self.Y_train)
+        res = clf.predict_proba(self.X_train)
+        auc_score = roc_auc_score(self.Y_train, res[:, 1])
+        print("train auc:", auc_score)
+
+        val = np.mean(cross_val_score(
+            clf, self.X_train, self.Y_train, scoring='roc_auc', cv=5
+        ))
+        print("val:", val)
+
+        return val
+
+    def run_model_cv(self,n_iter):
+
+        '''
+        input:
+         n_iter: the number of the total finds loop
+         path: the way stored the result
+         **parms: the variable parameters，like:
+            {'n_estimators': (100, 1500),
+             'num_leaves': (32, 64),
+             'learning_rate': (0.001, 0.1),
+             'scale_pos_weight': (5, 20),
+             'max_depth': (4, 7),
+             'reg_lambda': (0, 1),
+             'reg_alpha': (0, 1),
+             }
+        :return:
+        None
+        '''
+
+        if (self.X_train is None or self.Y_train is None):
+            raise AssertionError("数据集不能为空，请给self.X_train和self.Y_train赋值")
+        model_bo = BayesianOptimization(
+            self.model_cv,
+            self.parms
+        )
+
+
+        model_bo.maximize(n_iter=n_iter)  # 开始优化
 
 
 class LGBModelStacking:

@@ -30,3 +30,14 @@ class TestMetric(unittest.TestCase):
         y = np.array([0, 0, 1, 1, 1, 2, 2, 2, 2])
         psi = didtool.psi(x, y, 3)
         self.assertAlmostEqual(psi, 0.07701635339554946)
+
+    def test_ks(self):
+        import pandas as pd
+        import random
+        data = pd.read_csv("samples.csv")[['target']]
+
+        data['pro'] = data['target'].apply(lambda x: random.uniform(0, 0.8) if x < 1 else random.uniform(0.2, 1))
+        y_pre = data['pro']
+        y_real = data['target']
+
+        ks = didtool.plot_ks(y_pre, y_real)
