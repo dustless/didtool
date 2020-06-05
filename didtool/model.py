@@ -317,7 +317,7 @@ class LGBModelSingle:
 
         if (self.data[self.feature_names] is None or
                 self.data[self.target] is None):
-            raise AssertionError("数据集不能为空，请给self.X_train和self.Y_train赋值")
+            raise AssertionError("数据集不能为空，请给self.data赋值")
         model_bo = BayesianOptimization(
             self.model_cv,
             params
