@@ -1,10 +1,12 @@
 import os
 import unittest
 import pandas as pd
+import sys
+
 
 from didtool.model import LGBModelSingle, LGBModelStacking
 from didtool.split import split_data_random, split_data_stacking
-
+from didtool.Logger import Logger
 
 class TestModel(unittest.TestCase):
     def setUp(self):
@@ -115,4 +117,4 @@ class TestModel(unittest.TestCase):
         m.X_train = df[features]
         m.Y_train = df[['target']]
         m.parms = parms
-        m.run_model_cv()
+        m.run_model_cv(n_iter=100)

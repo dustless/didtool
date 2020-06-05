@@ -97,6 +97,8 @@ class LGBModelSingle:
         self._model_params = {}
         self._mapper = mapper
         self.update_model_params(model_params)
+        self.int_sets=("n_estimators","num_leaves","max_depth","subsample_for_bin","min_child_samples","max_bin")
+        self.float_sets=("learning_rate","reg_lambda","reg_alpha","subsample","min_child_weight","min_split_gain","scale_pos_weight")
 
     def update_model_params(self, model_params):
         """
@@ -255,19 +257,18 @@ class LGBModelSingle:
 
         for k, v in params.items():
             if k in self.int_sets:
-                self.model_params[k] = int(v)
+                self._model_params[k] = int(v)
             elif k in self.float_sets:
-                self.model_params[k] = float(v)
-        clf = lgb.LGBMClassifier(**self.model_params)
+                self._model_params[k] = float(v)
+        clf = lgb.LGBMClassifier(**self._model_params)
         clf.fit(self.X_train, self.Y_train)
         res = clf.predict_proba(self.X_train)
         auc_score = roc_auc_score(self.Y_train, res[:, 1])
-        print("train auc:", auc_score)
 
         val = np.mean(cross_val_score(
             clf, self.X_train, self.Y_train, scoring='roc_auc', cv=5
         ))
-        print("val:", val)
+
 
         return val
 
