@@ -114,7 +114,6 @@ class TestModel(unittest.TestCase):
                  'reg_lambda': (0, 1),
                  'reg_alpha': (0, 1),
                  }
-        m.X_train = df[features]
-        m.Y_train = df[['target']]
-        m.parms = parms
-        m.run_model_cv(n_iter=100)
+
+
+        m.run_model_cv(5,parms)
