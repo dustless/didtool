@@ -278,8 +278,11 @@ class LGBModelSingle:
         '''
         define the process of paramaters searching and the feedback indicators
         input:
-         n_iter: the number of the total finds loop
-
+         params: define the variables of paramaters to search,such as
+         model_bo = BayesianOptimization(
+                    self.model_cv,
+                    params
+                )
         :return:
         None
         '''
@@ -289,11 +292,10 @@ class LGBModelSingle:
             elif k in self.float_sets:
                 self._model_params[k] = float(v)
         clf = lgb.LGBMClassifier(**self._model_params)
-        X_train = self.data[self.feature_names]  # [self.group_col==0]
-        Y_train = self.data[self.target]  # [self.group_col==0]
+        X_train = self.data[self.feature_names]
+        Y_train = self.data[self.target]
         clf.fit(X_train,
-                Y_train)  # self., self.
-        res = clf.predict_proba(X_train)
+                Y_train)
 
         val = np.mean(cross_val_score(
             clf, X_train, Y_train,
@@ -302,23 +304,23 @@ class LGBModelSingle:
 
         return val
 
-    def run_model_cv(self, n_iter, parms):
+    def run_model_cv(self, n_iter, params):
 
         '''
         start the  bayes search
         input:
          n_iter: the number of the total finds loop
-
+         params: the variables of paramaters to search
         :return:
         None
         '''
 
-        if (self.data[self.feature_names] is None or self.data[
-            self.target] is None):
+        if (self.data[self.feature_names] is None or
+                self.data[self.target] is None):
             raise AssertionError("数据集不能为空，请给self.X_train和self.Y_train赋值")
         model_bo = BayesianOptimization(
             self.model_cv,
-            parms
+            params
         )
 
         model_bo.maximize(n_iter=n_iter)  # 开始优化

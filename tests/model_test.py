@@ -6,7 +6,7 @@ import sys
 
 from didtool.model import LGBModelSingle, LGBModelStacking
 from didtool.split import split_data_random, split_data_stacking
-from didtool.Logger import Logger
+from didtool.logger import Logger
 
 class TestModel(unittest.TestCase):
     def setUp(self):
@@ -94,7 +94,7 @@ class TestModel(unittest.TestCase):
         df['v5'] = df['v5'].astype('category')
 
         features = [col for col in df.columns.values if col != 'target']
-        # split_data
+
         data = split_data_random(df, 0.6, 0.2)
 
         model_params = dict(
@@ -106,7 +106,7 @@ class TestModel(unittest.TestCase):
         m = LGBModelSingle(data, features, 'target', out_path='./test_out',
                            model_params=model_params)
 
-        parms = {'n_estimators': (100, 1500),
+        params = {'n_estimators': (100, 1500),
                  'num_leaves': (32, 64),
                  'learning_rate': (0.001, 0.1),
                  'scale_pos_weight': (5, 20),
@@ -116,4 +116,4 @@ class TestModel(unittest.TestCase):
                  }
 
 
-        m.run_model_cv(5,parms)
+        m.run_model_cv(10,params)

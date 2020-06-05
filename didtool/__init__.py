@@ -8,4 +8,4 @@ from .model import LGBModelSingle, LGBModelStacking
 from .transformer import SingleWOETransformer, WOETransformer
 from .selector import Selector
 from .scorecard import ScoreCardTransformer
-from .Logger import Logger
+from .logger import Logger
