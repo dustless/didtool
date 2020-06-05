@@ -9,9 +9,15 @@
 
 import sys
 class Logger(object):
-    def __init__(self, fileN="Default.log"):
+    """
+        Class for the didtool relative logs
+        example:
+            plus the code ahead your codeing area
+            sys.stdout = Logger("./bayes_parameter_search.txt")
+    """
+    def __init__(self, file_name="Default.log"):
         self.terminal = sys.stdout
-        self.log = open(fileN, "w", encoding='utf-8')
+        self.log = open(file_name, "w", encoding='utf-8')
 
     def write(self, message):
         self.terminal.write(message)
