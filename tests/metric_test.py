@@ -40,4 +40,5 @@ class TestMetric(unittest.TestCase):
         y_pre = data['pro']
         y_real = data['target']
 
-        ks = didtool.plot_ks(y_pre, y_real)
+        #ks = didtool.plot_ks_in_cum(y_pre, y_real)
+        #ks_compare = didtool.plot_ks_in_tpr_fpr(y_pre, y_real)

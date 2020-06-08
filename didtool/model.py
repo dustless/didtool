@@ -59,23 +59,6 @@ class LGBModelSingle:
         params for LGBMClassifier
         (https://lightgbm.readthedocs.io/en/latest/Parameters.html)
 
-    #variables for function of bayes_search
-    int_sets : set
-        int params for LGBMClassifier set
-
-    float_sets: set
-        float params for LGBMClassifier set
-
-     **parms: the variable parameters in model，like:
-            {'n_estimators': (100, 1500),
-             'num_leaves': (32, 64),
-             'learning_rate': (0.001, 0.1),
-             'scale_pos_weight': (5, 20),
-             'max_depth': (4, 7),
-             'reg_lambda': (0, 1),
-             'reg_alpha': (0, 1),
-             }
-             define the bounday of each paramater to search
     _mapper : object of ColumnTransformer
     """
 
@@ -113,14 +96,7 @@ class LGBModelSingle:
         self._model_params = {}
         self._mapper = mapper
         self.update_model_params(model_params)
-        self.int_sets = (
-            "n_estimators", "num_leaves", "max_depth", "subsample_for_bin",
-            "min_child_samples", "max_bin"
-        )
-        self.float_sets = (
-            "learning_rate", "reg_lambda", "reg_alpha", "subsample",
-            "min_child_weight", "min_split_gain", "scale_pos_weight"
-        )
+
 
     def update_model_params(self, model_params):
         """
@@ -274,57 +250,60 @@ class LGBModelSingle:
             pkl_file = "%s_%s.pkl" % (self.model_name, date_str)
             joblib.dump(self.model, os.path.join(self.out_path, pkl_file))
 
-    def model_cv(self, **params):
+    def _model_cv(self, **params):
         """
         define the process of paramaters searching and the feedback indicators
         Parameters
         --------
-         params: define the variables of paramaters to search,such as
-         model_bo = BayesianOptimization(
+        params: define the variables of paramaters to search,such as
+        model_bo = BayesianOptimization(
                     self.model_cv,
                     params
                 )
-        :return:
-        None
         """
+        int_sets = (
+            "n_estimators", "num_leaves", "max_depth", "subsample_for_bin",
+            "min_child_samples", "max_bin"
+        )
+        float_sets = (
+            "learning_rate", "reg_lambda", "reg_alpha", "subsample",
+            "min_child_weight", "min_split_gain", "scale_pos_weight"
+        )
         for k, v in params.items():
-            if k in self.int_sets:
+            if k in int_sets:
                 self._model_params[k] = int(v)
-            elif k in self.float_sets:
+            elif k in float_sets:
                 self._model_params[k] = float(v)
-        clf = lgb.LGBMClassifier(**self._model_params)
-        X_train = self.data[self.feature_names]
-        Y_train = self.data[self.target]
-        clf.fit(X_train,
-                Y_train)
 
+        # 参数初始化
+        clf = lgb.LGBMClassifier(**self._model_params)
+        tran_data = self.data[self.group_col == 0]
+        x_train = tran_data[self.feature_names]
+        y_train = tran_data[self.target]
+        clf.fit(x_train, y_train)
+
+        # 反馈指标设置
         val = np.mean(cross_val_score(
-            clf, X_train, Y_train,
+            clf, x_train, y_train,
             scoring='roc_auc', cv=5
         ))
 
         return val
 
-    def run_model_cv(self, n_iter, params):
+    def run_model_cv(self, params, n_iter=10):
         """
         start the  bayes search
 
         Parameters
         --------
-        input:
-         n_iter: the number of the total finds loop
-         params: the variables of paramaters to search
-        :return:
-        None
+        n_iter: the number of the total finds loop
+        params: the variables of paramaters to search
         """
-        if (self.data[self.feature_names] is None or
-                self.data[self.target] is None):
-            raise AssertionError("数据集不能为空，请给self.data赋值")
         model_bo = BayesianOptimization(
-            self.model_cv,
+            self._model_cv,
             params
         )
-        #start optimize
+        # start optimize
         model_bo.maximize(n_iter=n_iter)
 
 
