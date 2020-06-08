@@ -275,9 +275,10 @@ class LGBModelSingle:
             joblib.dump(self.model, os.path.join(self.out_path, pkl_file))
 
     def model_cv(self, **params):
-        '''
+        """
         define the process of paramaters searching and the feedback indicators
-        input:
+        Parameters
+        --------
          params: define the variables of paramaters to search,such as
          model_bo = BayesianOptimization(
                     self.model_cv,
@@ -285,7 +286,7 @@ class LGBModelSingle:
                 )
         :return:
         None
-        '''
+        """
         for k, v in params.items():
             if k in self.int_sets:
                 self._model_params[k] = int(v)
@@ -305,16 +306,17 @@ class LGBModelSingle:
         return val
 
     def run_model_cv(self, n_iter, params):
-
-        '''
+        """
         start the  bayes search
+
+        Parameters
+        --------
         input:
          n_iter: the number of the total finds loop
          params: the variables of paramaters to search
         :return:
         None
-        '''
-
+        """
         if (self.data[self.feature_names] is None or
                 self.data[self.target] is None):
             raise AssertionError("数据集不能为空，请给self.data赋值")
@@ -322,8 +324,8 @@ class LGBModelSingle:
             self.model_cv,
             params
         )
-
-        model_bo.maximize(n_iter=n_iter)  # 开始优化
+        #start optimize
+        model_bo.maximize(n_iter=n_iter)
 
 
 class LGBModelStacking:
