@@ -467,7 +467,42 @@ def plot_pr_threshold(y_true, y_pred, out_path=None,
         plt.show()
 
 
-def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png'):
+def plot_ks(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png',
+            cal_method="plot_ks_in_cum"):
+    """
+    Compute plot_ks ,plot ks curve and find the max ks value.
+    bad label : the label equals 1
+    good label : the label equals 0
+    Parameters
+    ----------
+    y_true : array, shape = [n_samples]
+    True binary labels.
+
+    y_pred : array, shape = [n_samples]
+        target scores, predicted by estimator
+
+    out_path : str or None
+        if out_path specified, save figure to `out_path`
+
+    file_name : str
+        save figure as `file_name`
+
+    cal_method : str
+        choose the way how to plot ks
+    """
+    if cal_method not in ('plot_ks_in_cum', 'plot_ks_in_tpr_fpr'):
+        raise Exception("Invalid plot_ks mode!")
+
+    if cal_method == 'plot_ks_in_cum':
+        plot_ks_in_cum(y_pred=y_pred, y_true=y_true, out_path=out_path,
+                       file_name=file_name)
+    else:
+        plot_ks_in_tpr_fpr(y_pred=y_pred, y_true=y_true, out_path=out_path,
+                           file_name=file_name)
+
+
+def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None,
+                   file_name='pr_ks.png'):
     """
     Compute plot_ks in the formula of max(Cum.B_i/Bad_total-Cum.G_i/Good_total)
     , plot ks curve and find the max ks value.
@@ -489,12 +524,13 @@ def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png
     file_name : str
         save figure as `file_name`
     """
-    #init the data into a dataframe-ksds
+    # init the data into a dataframe-ksds
     y_true_series = pd.Series(y_true.tolist())
     y_pred_series = pd.Series(y_pred.tolist())
     ksds = pd.concat([y_true_series, y_pred_series], axis=1)
     ksds.columns = ['bad', 'pred']
-    #to Statistic the good counts
+
+    # to Statistic the good counts
     ksds['good'] = 1 - ksds.bad
 
     # accumulate the good/bad counts, and compute the relative ks values
@@ -505,7 +541,6 @@ def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png
     ksds['cumsum_good'] = ksds1['cumsum_good1']
     ksds['cumsum_bad'] = ksds1['cumsum_bad1']
     ksds['ks'] = ksds['cumsum_bad'] - ksds['cumsum_good']
-
 
     # cut the ks values
     ksds['tile0'] = range(1, len(ksds.ks) + 1)
@@ -525,14 +560,13 @@ def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png
     ksds = pd.concat([ksds0, ksds], axis=0)
     ksds = ksds[['tile', 'cumsum_good', 'cumsum_bad', 'ks']]
 
-
     # find the right(max) ks value
     ks_value = ksds.ks.max()
     ks_pop = ksds.tile[ksds.ks.idxmax()]
 
-    #summary and plot
-    print('ks_value is ' + str(np.round(ks_value, 4)) + ' at pop = ' + str(
-        np.round(ks_pop, 4)))
+    # summary and plot
+    # print('ks_value is ' + str(np.round(ks_value, 4)) + ' at pop = ' + str(
+    #     np.round(ks_pop, 4)))
     plt.figure(figsize=(10, 8))
     plt.plot(ksds.tile, ksds.cumsum_good, label='cum_good',
              color='blue', linestyle='-', linewidth=2)
@@ -553,7 +587,9 @@ def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png
     else:
         plt.show()
 
-def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png'):
+
+def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None,
+                       file_name='pr_ks.png'):
     """
     Compute plot_ks in the formula of max(tpr_i-fpr_i)
     , plot ks curve and find the max ks value.
@@ -584,6 +620,7 @@ def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None, file_name='pr_ks
     plt.plot(tpr, label='bad')
     plt.plot(fpr, label='good')
     plt.plot(abs(fpr - tpr), label='diff')
+
     # mark the ks value
     x = np.argwhere(abs(tpr - fpr) == ks_value)[0, 0]
     plt.plot((x, x), (0, ks_value), label='ks - {:.4f}'.format(ks_value),
@@ -594,5 +631,3 @@ def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None, file_name='pr_ks
         plt.savefig(os.path.join(out_path, file_name))
     else:
         plt.show()
-
-

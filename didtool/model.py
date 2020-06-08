@@ -97,7 +97,6 @@ class LGBModelSingle:
         self._mapper = mapper
         self.update_model_params(model_params)
 
-
     def update_model_params(self, model_params):
         """
         update model params and create new model
