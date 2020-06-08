@@ -275,14 +275,14 @@ class LGBModelSingle:
             elif k in float_sets:
                 self._model_params[k] = float(v)
 
-        # 参数初始化
+        # init parameters
         clf = lgb.LGBMClassifier(**self._model_params)
         tran_data = self.data[self.group_col == 0]
         x_train = tran_data[self.feature_names]
         y_train = tran_data[self.target]
         clf.fit(x_train, y_train)
 
-        # 反馈指标设置
+        # setting the indicator to loop
         val = np.mean(cross_val_score(
             clf, x_train, y_train,
             scoring='roc_auc', cv=5
