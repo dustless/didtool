@@ -296,7 +296,6 @@ class Selector:
             top_n = self.iv_stats.shape[0] - 1
 
         # Make a horizontal bar chart of feature iv
-        plt.rcParams = plt.rcParamsDefault
         plt.figure(figsize=(10, 6))
         ax = plt.subplot()
 
@@ -387,8 +386,6 @@ class Selector:
         # features in the data
         if top_n > self.importance_stats.shape[0]:
             top_n = self.importance_stats.shape[0] - 1
-
-        plt.rcParams = plt.rcParamsDefault
 
         # Make a horizontal bar chart of feature importances
         plt.figure(figsize=(10, 6))

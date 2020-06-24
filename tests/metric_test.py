@@ -21,8 +21,8 @@ class TestMetric(unittest.TestCase):
 
         self.assertAlmostEqual(iv1, 1.334705486550453)
         self.assertAlmostEqual(iv2, 1.4057157347824798)
-        self.assertAlmostEqual(iv3, 1.4340120285033071)
-        self.assertAlmostEqual(iv4, 1.3120787039390784)
+        self.assertAlmostEqual(iv3, 1.4974950271838132)
+        self.assertAlmostEqual(iv4, 1.3755617026195848)
         self.assertAlmostEqual(iv5, 1.4057157347824798)
 
     def test_psi(self):
