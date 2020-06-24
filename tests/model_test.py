@@ -1,9 +1,11 @@
 import os
 import unittest
 import pandas as pd
+import sys
 
 from didtool.model import LGBModelSingle, LGBModelStacking
 from didtool.split import split_data_random, split_data_stacking
+from didtool.logger import Logger
 
 
 class TestModel(unittest.TestCase):
@@ -86,3 +88,33 @@ class TestModel(unittest.TestCase):
 
         # test export
         m.export()
+
+    def test_run_model_cv(self):
+        # log config
+        sys.stdout = Logger("./bayes_parameter_search.txt")
+
+        # data read and split
+        df = pd.read_csv('samples.csv')
+        df['v5'] = df['v5'].astype('category')
+        features = [col for col in df.columns.values if col != 'target']
+        data = split_data_random(df, 0.6, 0.2)
+
+        model_params = dict(
+            boosting_type='gbdt', n_estimators=10, learning_rate=0.05,
+            max_depth=5, feature_fraction=1, bagging_fraction=1, reg_alpha=1,
+            reg_lambda=1, min_data_in_leaf=20, random_state=27,
+            class_weight='balanced'
+        )
+        m = LGBModelSingle(data, features, 'target', out_path='./test_out',
+                           model_params=model_params)
+
+        params = {'n_estimators': (100, 1500),
+                  'num_leaves': (32, 64),
+                  'learning_rate': (0.001, 0.1),
+                  'scale_pos_weight': (5, 20),
+                  'max_depth': (4, 7),
+                  'reg_lambda': (0, 1),
+                  'reg_alpha': (0, 1),
+                  }
+        # test parameters searching
+        m.run_model_cv(params, 10)
