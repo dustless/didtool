@@ -276,7 +276,7 @@ class LGBModelSingle:
 
         # init parameters
         clf = lgb.LGBMClassifier(**self._model_params)
-        tran_data = self.data[self.group_col == 0]
+        tran_data = self.data[self.data[self.group_col] == 0]
         x_train = tran_data[self.feature_names]
         y_train = tran_data[self.target]
         clf.fit(x_train, y_train)

@@ -21,5 +21,5 @@ class Logger(object):
         # 每次写入后刷新到文件中，防止程序意外结束
         self.flush()
 
-        def flush(self):
-            self.log.flush()
+    def flush(self):
+        self.log.flush()

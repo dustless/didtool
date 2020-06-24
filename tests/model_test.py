@@ -91,7 +91,7 @@ class TestModel(unittest.TestCase):
 
     def test_run_model_cv(self):
         # log config
-        sys.stdout = Logger("./bayes_parameter_search.txt")
+        sys.stdout = Logger("./test_out/bayes_parameter_search.txt")
 
         # data read and split
         df = pd.read_csv('samples.csv')

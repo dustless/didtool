@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="didtool",
-    version="0.0.3",
+    version="0.0.4",
     author="dustless",
     author_email="wuchenghui927@126.com",
     description="Tool set for feature engineering & modeling",
@@ -18,6 +18,7 @@ setuptools.setup(
         "scikit-learn>=0.21.3",
         "lightgbm>=2.3.1",
         "sklearn2pmml>=0.52.1",
+        "bayesian-optimization==1.2.0",
         "pandas",
         "numpy",
     ],
