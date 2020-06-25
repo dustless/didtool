@@ -309,7 +309,7 @@ class LGBModelSingle:
             n_iter=n_iter+5), model_bo.max)
         optimize_param = model_bo.max["params"]
         self.update_model_params(optimize_param)
-        print(self._model_params)
+        print("after updating searching,the latest params are : ",self._model_params)
 
 
 class LGBModelStacking:
