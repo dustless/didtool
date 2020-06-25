@@ -4,6 +4,7 @@ import os
 import lightgbm as lgb
 import pandas as pd
 import numpy as np
+import json
 from sklearn.metrics.ranking import roc_auc_score
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
@@ -249,47 +250,7 @@ class LGBModelSingle:
             pkl_file = "%s_%s.pkl" % (self.model_name, date_str)
             joblib.dump(self.model, os.path.join(self.out_path, pkl_file))
 
-    def _model_cv(self, **params):
-        """
-        define the process of paramaters searching and the feedback indicators
-        Parameters
-        --------
-        params: define the variables of paramaters to search,such as
-        model_bo = BayesianOptimization(
-                    self.model_cv,
-                    params
-                )
-        """
-        int_sets = (
-            "n_estimators", "num_leaves", "max_depth", "subsample_for_bin",
-            "min_child_samples", "max_bin"
-        )
-        float_sets = (
-            "learning_rate", "reg_lambda", "reg_alpha", "subsample",
-            "min_child_weight", "min_split_gain", "scale_pos_weight"
-        )
-        for k, v in params.items():
-            if k in int_sets:
-                self._model_params[k] = int(v)
-            elif k in float_sets:
-                self._model_params[k] = float(v)
-
-        # init parameters
-        clf = lgb.LGBMClassifier(**self._model_params)
-        tran_data = self.data[self.data[self.group_col] == 0]
-        x_train = tran_data[self.feature_names]
-        y_train = tran_data[self.target]
-        clf.fit(x_train, y_train)
-
-        # setting the indicator to loop
-        val = np.mean(cross_val_score(
-            clf, x_train, y_train,
-            scoring='roc_auc', cv=5
-        ))
-
-        return val
-
-    def run_model_cv(self, params, n_iter=10):
+    def optimize_model_param(self, n_iter, params):
         """
         start the  bayes search
 
@@ -298,12 +259,57 @@ class LGBModelSingle:
         n_iter: the number of the total finds loop
         params: the variables of paramaters to search
         """
+
+        def _model_cv(**params):
+            """
+            define the process of paramaters searching and the feedback indicators
+            Parameters
+            --------
+            params: define the variables of paramaters to search,such as
+            model_bo = BayesianOptimization(
+                        self.model_cv,
+                        params
+                    )
+            """
+            int_sets = (
+                "n_estimators", "num_leaves", "max_depth", "subsample_for_bin",
+                "min_child_samples", "max_bin"
+            )
+            float_sets = (
+                "learning_rate", "reg_lambda", "reg_alpha", "subsample",
+                "min_child_weight", "min_split_gain", "scale_pos_weight"
+            )
+            print("params:", params)
+            for k, v in params.items():
+                if k in int_sets:
+                    self._model_params[k] = int(v)
+                elif k in float_sets:
+                    self._model_params[k] = float(v)
+
+            # setting the indicator to loop
+            val = np.mean(cross_val_score(
+                lgb.LGBMClassifier(**self._model_params), x_train, y_train,
+                scoring='roc_auc', cv=5
+            ))
+
+            return val
+
+        # init parameters
+        tran_data = self.data[self.data[self.group_col] == 0]
+        x_train = tran_data[self.feature_names]
+        y_train = tran_data[self.target]
+
         model_bo = BayesianOptimization(
-            self._model_cv,
+            _model_cv,
             params
         )
         # start optimize
         model_bo.maximize(n_iter=n_iter)
+        print("after {n_iter} loops optimize the searching params are : ".format(
+            n_iter=n_iter+5), model_bo.max)
+        optimize_param = model_bo.max["params"]
+        self.update_model_params(optimize_param)
+        print(self._model_params)
 
 
 class LGBModelStacking:

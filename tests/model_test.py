@@ -6,6 +6,7 @@ import sys
 from didtool.model import LGBModelSingle, LGBModelStacking
 from didtool.split import split_data_random, split_data_stacking
 from didtool.logger import Logger
+from pathlib import Path
 
 
 class TestModel(unittest.TestCase):
@@ -91,8 +92,12 @@ class TestModel(unittest.TestCase):
 
     def test_run_model_cv(self):
         # log config
-        sys.stdout = Logger("./test_out/bayes_parameter_search.txt")
-
+        log_file_dir = Path("./test_out/bayes_parameter_search.txt")
+        if log_file_dir.exists():
+            sys.stdout = Logger(log_file_dir)
+        else:
+            open(log_file_dir, "w").close()
+            sys.stdout = Logger(log_file_dir)
         # data read and split
         df = pd.read_csv('samples.csv')
         df['v5'] = df['v5'].astype('category')
@@ -116,5 +121,6 @@ class TestModel(unittest.TestCase):
                   'reg_lambda': (0, 1),
                   'reg_alpha': (0, 1),
                   }
+        print(type(params))
         # test parameters searching
-        m.run_model_cv(params, 10)
+        m.optimize_model_param(10, params)
