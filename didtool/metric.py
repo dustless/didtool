@@ -612,11 +612,9 @@ def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None,
 
     fpr, tpr, thresholds = roc_curve(y_true, y_pred)
     ks_value = max(abs(fpr - tpr))
-    print("fpr:", fpr)
-    print("tpr:", tpr)
-    print("thresholds:", thresholds)
 
     # plot
+    plt.figure(figsize=(10, 8))
     plt.plot(tpr, label='bad')
     plt.plot(fpr, label='good')
     plt.plot(abs(fpr - tpr), label='diff')
