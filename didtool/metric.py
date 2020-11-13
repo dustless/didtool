@@ -631,14 +631,15 @@ def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None,
         plt.show()
 
 
-def __group_bin_sample_prop(probs, groups, bins=10):
+def __group_bin_sample_prop(probs, groups, n_bins=10):
     """
-    Cut values into discrete intervals by quantile and compute the proportion of 'probs' in every bin
+    Cut values into discrete intervals by quantile and compute the proportion
+     of 'probs' in every bin
     Parameters
     ----------
     probs : list or pandas.Series of probs, like result['prob']
     groups : list or pandas.Series of probs, like result['month']
-    bins : int, default 10
+    n_bins : int, default 10
         Defines the number of equal-width bins in the range of `probs`.
 
     Returns
@@ -658,22 +659,24 @@ def __group_bin_sample_prop(probs, groups, bins=10):
     (0.0242, 0.192]     0.0993   0.0874   0.0856   0.1606   0.0831   0.0766
     """
     df = pd.DataFrame(dict(score=probs, group=groups))
-    df['bin'] = pd.qcut(df.score, q=bins, duplicates='drop')
+    df['bin'] = pd.qcut(df.score, q=n_bins, duplicates='drop')
     res = df.groupby(['bin', 'group']).count()['score'].unstack()
     for grp in res.columns:
         res[grp] = res[grp] / sum(res[grp])
     return round(res, 4)
 
 
-def __group_bin_positive_rate(probs, labels, month, bins=10):
+def __group_bin_positive_rate(probs, labels, month, n_bins=10):
     """
-    Cut values into discrete intervals by quantile and compute the mean of 'labels' in every bin
+    Cut values into discrete intervals by quantile and compute the mean of
+     'labels' in every bin
+
     Parameters
     ----------
     probs : list or pandas.Series of probs, like result['prob']
     labels : list or pandas.Series of label, like result['is_d7']
     month : list or pandas.Series of month, like result['month']
-    bins : int, default 10
+    n_bins : int, default 10
         Defines the number of equal-width bins in the range of `probs`.
 
     Returns
@@ -693,13 +696,13 @@ def __group_bin_positive_rate(probs, labels, month, bins=10):
     (0.0242, 0.192]     0.0259   0.0242   0.0307   0.0372   0.0231   0.0178
     """
     df = pd.DataFrame(dict(score=probs, group=month, label=labels))
-    df['bin'] = pd.qcut(df.score, q=bins, duplicates='drop')
+    df['bin'] = pd.qcut(df.score, q=n_bins, duplicates='drop')
     res = df.groupby(['bin', 'group']).mean()['label'].unstack()
     return round(res, 4)
 
 
-def plot_layer_stability(probs, groups, labels, score_name='prob',
-                         out_path=None, bins=10, figure_name='prob_stability.png'):
+def plot_layer_stability(probs, groups, labels, n_bins=10, fig_title='prob',
+                         out_path=None, file_name='prob_stability.png'):
     """
     plot the layer stability
     Parameters
@@ -712,38 +715,45 @@ def plot_layer_stability(probs, groups, labels, score_name='prob',
     labels : list or pandas.Series of label, like result['is_d7']
         True binary labels.
 
-    score_name :str
+    fig_title :str
         figure title of figure
 
     out_path :str or None
         if out_path specified, save figure to `out_path`
 
-    bins :int default 10
+    n_bins :int default 10
         Defines the number of equal-width bins in the range of `probs`.
 
-    figure_name : str
+    file_name : str
         save figure as `figure_name`
     """
-    layer_props = __group_bin_sample_prop(probs, groups, bins)
-    layer_positive_rates = __group_bin_positive_rate(probs, labels, groups, bins)
+    layer_props = __group_bin_sample_prop(probs, groups, n_bins)
+    layer_positive_rates = __group_bin_positive_rate(probs, labels, groups,
+                                                     n_bins)
+
+    # positive rate line curve
     fig, ax = plt.figure(figsize=(20, 12)), plt.axes()
     x = [str(i) for i in layer_positive_rates.index]
     ax.set_ylabel('overdue rate')
     ax.set_xlabel('bin')
-    ax.set_title(score_name)
+    ax.set_title(fig_title)
     month = layer_props.columns
     for i, col in enumerate(month):
         ax.plot(x, layer_positive_rates[col], alpha=0.6, label=col, linewidth=2)
     ax.legend(loc='upper left')
+
+    # proportion histogram
     ax2 = ax.twinx()
     ax2.grid(False)
     width = 1 / (len(month) * 2)
     array_x = np.arange(len(x)) - width * len(month) / 2
     for fc, col in enumerate(month):
-        ax2.bar(array_x + fc * width, layer_props[col], width=width, alpha=0.6, label=col)
+        ax2.bar(array_x + fc * width, layer_props[col], width=width, alpha=0.6,
+                label=col)
     ax2.set_ylabel('proportion')
     ax2.legend(loc='upper right')
+
     plt.show()
     if out_path:
-        plt.savefig(os.path.join(out_path, figure_name))
+        plt.savefig(os.path.join(out_path, file_name))
     plt.close()
