@@ -4,7 +4,7 @@ from .split import split_data, split_data_random, split_data_stacking
 from .stats import iv_all, psi_all
 from .metric import iv, psi, plot_roc, \
     plot_pr_curve, plot_pr_threshold, compare_roc, distribution, distributions,\
-    plot_ks_in_cum, plot_ks_in_tpr_fpr
+    plot_ks_in_cum, plot_ks_in_tpr_fpr, plot_ks, plot_layer_stability
 from .model import LGBModelSingle, LGBModelStacking
 from .transformer import SingleWOETransformer, WOETransformer
 from .selector import Selector

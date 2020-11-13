@@ -629,3 +629,131 @@ def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None,
         plt.savefig(os.path.join(out_path, file_name))
     else:
         plt.show()
+
+
+def __group_bin_sample_prop(probs, groups, n_bins=10):
+    """
+    Cut values into discrete intervals by quantile and compute the proportion
+     of 'probs' in every bin
+    Parameters
+    ----------
+    probs : list or pandas.Series of probs, like result['prob']
+    groups : list or pandas.Series of probs, like result['month']
+    n_bins : int, default 10
+        Defines the number of equal-width bins in the range of `probs`.
+
+    Returns
+    -------
+    res : DataFrame like:
+    group              2019/10  2019/11  2019/12  2019/9/  2020/1/  2020/2/
+    bin
+    (0.00468, 0.0126]   0.0993   0.1067   0.1082   0.0646   0.1110   0.1153
+    (0.0126, 0.0142]    0.1005   0.1093   0.1060   0.0688   0.1129   0.1123
+    (0.0142, 0.0152]    0.1057   0.1043   0.0980   0.0785   0.1032   0.1037
+    (0.0152, 0.0158]    0.1082   0.1004   0.1018   0.0942   0.0980   0.0897
+    (0.0158, 0.0168]    0.0999   0.1012   0.0989   0.0971   0.1032   0.1010
+    (0.0168, 0.0177]    0.1004   0.1008   0.0996   0.0999   0.0991   0.0984
+    (0.0177, 0.019]     0.0981   0.0969   0.1023   0.1047   0.0971   0.1029
+    (0.019, 0.0209]     0.0941   0.0993   0.1002   0.1103   0.0980   0.1015
+    (0.0209, 0.0242]    0.0947   0.0936   0.0994   0.1212   0.0943   0.0985
+    (0.0242, 0.192]     0.0993   0.0874   0.0856   0.1606   0.0831   0.0766
+    """
+    df = pd.DataFrame(dict(score=probs, group=groups))
+    df['bin'] = pd.qcut(df.score, q=n_bins, duplicates='drop')
+    res = df.groupby(['bin', 'group']).count()['score'].unstack()
+    for grp in res.columns:
+        res[grp] = res[grp] / sum(res[grp])
+    return round(res, 4)
+
+
+def __group_bin_positive_rate(probs, labels, month, n_bins=10):
+    """
+    Cut values into discrete intervals by quantile and compute the mean of
+     'labels' in every bin
+
+    Parameters
+    ----------
+    probs : list or pandas.Series of probs, like result['prob']
+    labels : list or pandas.Series of label, like result['is_d7']
+    month : list or pandas.Series of month, like result['month']
+    n_bins : int, default 10
+        Defines the number of equal-width bins in the range of `probs`.
+
+    Returns
+    -------
+    res : DataFrame like:
+    group              2019/10  2019/11  2019/12  2019/9/  2020/1/  2020/2/
+    bin
+    (0.00468, 0.0126]   0.0118   0.0111   0.0109   0.0185   0.0062   0.0073
+    (0.0126, 0.0142]    0.0132   0.0131   0.0145   0.0205   0.0088   0.0103
+    (0.0142, 0.0152]    0.0154   0.0172   0.0133   0.0187   0.0124   0.0066
+    (0.0152, 0.0158]    0.0189   0.0146   0.0157   0.0182   0.0117   0.0094
+    (0.0158, 0.0168]    0.0152   0.0138   0.0170   0.0265   0.0119   0.0120
+    (0.0168, 0.0177]    0.0206   0.0156   0.0163   0.0236   0.0139   0.0107
+    (0.0177, 0.019]     0.0195   0.0166   0.0170   0.0222   0.0216   0.0097
+    (0.019, 0.0209]     0.0217   0.0264   0.0227   0.0272   0.0204   0.0135
+    (0.0209, 0.0242]    0.0276   0.0268   0.0238   0.0260   0.0187   0.0085
+    (0.0242, 0.192]     0.0259   0.0242   0.0307   0.0372   0.0231   0.0178
+    """
+    df = pd.DataFrame(dict(score=probs, group=month, label=labels))
+    df['bin'] = pd.qcut(df.score, q=n_bins, duplicates='drop')
+    res = df.groupby(['bin', 'group']).mean()['label'].unstack()
+    return round(res, 4)
+
+
+def plot_layer_stability(probs, groups, labels, n_bins=10, fig_title='prob',
+                         out_path=None, file_name='prob_stability.png'):
+    """
+    plot the layer stability
+    Parameters
+    ----------
+    probs : list or pandas.Series of probs, like result['prob']
+        target scores, predicted by estimator.
+
+    groups : list or pandas.Series of probs, like result['month']
+
+    labels : list or pandas.Series of label, like result['is_d7']
+        True binary labels.
+
+    fig_title :str
+        figure title of figure
+
+    out_path :str or None
+        if out_path specified, save figure to `out_path`
+
+    n_bins :int default 10
+        Defines the number of equal-width bins in the range of `probs`.
+
+    file_name : str
+        save figure as `figure_name`
+    """
+    layer_props = __group_bin_sample_prop(probs, groups, n_bins)
+    layer_positive_rates = __group_bin_positive_rate(probs, labels, groups,
+                                                     n_bins)
+
+    # positive rate line curve
+    fig, ax = plt.figure(figsize=(20, 12)), plt.axes()
+    x = [str(i) for i in layer_positive_rates.index]
+    ax.set_ylabel('overdue rate')
+    ax.set_xlabel('bin')
+    ax.set_title(fig_title)
+    month = layer_props.columns
+    for i, col in enumerate(month):
+        ax.plot(x, layer_positive_rates[col], alpha=0.6, label=col, linewidth=2)
+    ax.legend(loc='upper left')
+
+    # proportion histogram
+    ax2 = ax.twinx()
+    ax2.grid(False)
+    width = 1 / (len(month) * 2)
+    array_x = np.arange(len(x)) - width * len(month) / 2
+    for fc, col in enumerate(month):
+        ax2.bar(array_x + fc * width, layer_props[col], width=width, alpha=0.6,
+                label=col)
+    ax2.set_ylabel('proportion')
+    ax2.legend(loc='upper right')
+
+    plt.show()
+    if out_path:
+        plt.savefig(os.path.join(out_path, file_name))
+    plt.close()
