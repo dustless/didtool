@@ -113,14 +113,14 @@ class TestModel(unittest.TestCase):
         m = LGBModelSingle(data, features, 'target', out_path='./test_out',
                            model_params=model_params)
 
-        params = {'n_estimators': (100, 1500),
-                  'num_leaves': (32, 64),
-                  'learning_rate': (0.001, 0.1),
-                  'scale_pos_weight': (5, 20),
-                  'max_depth': (4, 7),
-                  'reg_lambda': (0, 1),
-                  'reg_alpha': (0, 1),
-                  }
-        print(type(params))
+        searching_space = {
+            'n_estimators': (100, 1500),
+            'num_leaves': (32, 64),
+            'learning_rate': (0.001, 0.1),
+            'scale_pos_weight': (5, 20),
+            'max_depth': (4, 7),
+            'reg_lambda': (0, 1),
+            'reg_alpha': (0, 1),
+        }
         # test parameters searching
-        m.optimize_model_param(10, params)
+        m.optimize_model_param(searching_space)

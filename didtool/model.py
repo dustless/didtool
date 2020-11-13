@@ -250,26 +250,18 @@ class LGBModelSingle:
             pkl_file = "%s_%s.pkl" % (self.model_name, date_str)
             joblib.dump(self.model, os.path.join(self.out_path, pkl_file))
 
-    def optimize_model_param(self, n_iter, params):
+    def optimize_model_param(self, searching_space, n_iter=10):
         """
         start the  bayes search
 
         Parameters
         --------
         n_iter: the number of the total finds loop
-        params: the variables of paramaters to search
+        searching_space: the searching space of parameters
         """
-
-        def _model_cv(**params):
+        def _convert_param_types(model_param):
             """
-            define the process of paramaters searching and the feedback indicators
-            Parameters
-            --------
-            params: define the variables of paramaters to search,such as
-            model_bo = BayesianOptimization(
-                        self.model_cv,
-                        params
-                    )
+            convert model param types to correct types
             """
             int_sets = (
                 "n_estimators", "num_leaves", "max_depth", "subsample_for_bin",
@@ -279,16 +271,22 @@ class LGBModelSingle:
                 "learning_rate", "reg_lambda", "reg_alpha", "subsample",
                 "min_child_weight", "min_split_gain", "scale_pos_weight"
             )
-            print("params:", params)
-            for k, v in params.items():
+            for k, v in model_param.items():
                 if k in int_sets:
-                    self._model_params[k] = int(v)
+                    model_param[k] = int(v)
                 elif k in float_sets:
-                    self._model_params[k] = float(v)
+                    model_param[k] = float(v)
+            return model_param
 
+        def _model_cv(**model_param):
+            """
+            define the process of paramaters searching and the feedback
+            indicators
+            """
+            model_param = _convert_param_types(model_param)
             # setting the indicator to loop
             val = np.mean(cross_val_score(
-                lgb.LGBMClassifier(**self._model_params), x_train, y_train,
+                lgb.LGBMClassifier(**model_param), x_train, y_train,
                 scoring='roc_auc', cv=5
             ))
 
@@ -301,15 +299,15 @@ class LGBModelSingle:
 
         model_bo = BayesianOptimization(
             _model_cv,
-            params
+            searching_space
         )
         # start optimize
         model_bo.maximize(n_iter=n_iter)
-        print("after {n_iter} loops optimize the searching params are : ".format(
-            n_iter=n_iter+5), model_bo.max)
-        optimize_param = model_bo.max["params"]
-        self.update_model_params(optimize_param)
-        print("after updating searching,the latest params are : ",self._model_params)
+        optimized_param = _convert_param_types(model_bo.max["params"])
+        print("the optimized searching params are : ", optimized_param)
+
+        self.update_model_params(optimized_param)
+        print("the latest model params are updated to: ", self._model_params)
 
 
 class LGBModelStacking:
