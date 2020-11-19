@@ -27,27 +27,32 @@ class Encoder:
         return self.data
 
     def category_encode(self, columns: Union[list, str], max_bins=None,
-                        min_coverage=None, nan_value='-999') -> pd.DataFrame:
+                        min_coverage=None) -> pd.DataFrame:
+        """
+        encode data in category
+        Parameters
+        ----------
+        columns: cloumns to be encoded
+        max_bins: max category of every encoded column
+        min_coverage: min coverage of every encoded column
 
+        Returns
+        -------
+        pd.dataframe with category encoded
+        """
         if isinstance(columns, str):
             columns = [columns]
 
         for col in columns:
-            # 判断是否有空缺值
             flag = self.data[col].isnull().any()
-            if flag:
-                # 填充空缺值
-                self.data.loc[:, col] = self.data[col].fillna(nan_value)
-            # 统计类别频率
+
             df_tmp = pd.DataFrame(self.data[col].value_counts())
             df_tmp.reset_index(inplace=True)
             df_tmp.columns = [col, 'cnt']
             n_bins = df_tmp.shape[0]
             if max_bins:
-                # 以最大分箱数为限制编码
                 n_bins = min(n_bins, max_bins)
             elif min_coverage:
-                # 以最大分箱数为限制编码
                 cnt = 0
                 for i, cnt_tmp in enumerate(df_tmp.cnt.to_list()):
                     cnt += cnt_tmp
@@ -55,20 +60,23 @@ class Encoder:
                         n_bins = i + 1
                         break
             else:
-                # 以全部类别全部编码（参考sklearn的OrdinalEncoder方法）
+                # encode all category like sklearn.preprocessing.OrdinalEncoder
                 n_bins = n_bins
             map_encode = {
                 key: val for val, key in enumerate(
-                    df_tmp.iloc[:n_bins - 1][col].to_list())
+                    df_tmp.iloc[:n_bins][col].to_list())
             }
+            # encode to 0 when all values is np.nan else n_bins-1
+            map_encode.update({'others': max(n_bins - 1, 0)})
 
-            map_encode.update({'others': n_bins - 1})
-
-            if nan_value not in map_encode and flag:
+            nan_value = '-999'
+            # encode np.nan if this colunm has np.nan
+            if flag:
                 map_encode.update({nan_value: n_bins})
 
-            self.data.loc[:, col + '_encoder'] = self.data.loc[:, col].apply(
-                lambda x: map_encode.get(x, n_bins - 1))
+            self.data.loc[:, col + '_encoder'] = self.data[col].fillna(
+                nan_value).apply(
+                lambda x: map_encode.get(x, n_bins - 1)).astype('category')
             del self.data[col]
 
             df_encoder = pd.DataFrame(pd.Series(map_encode))
