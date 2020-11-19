@@ -73,7 +73,7 @@ class Encoder:
 
             df_encoder = pd.DataFrame(pd.Series(map_encode))
             df_encoder.reset_index(inplace=True)
-            df_encoder.columns = [col, col + '_encode']
+            df_encoder.columns = [col, col + '_encoder']
             self.df_encoder = pd.concat([self.df_encoder, df_encoder],
                                         axis=1)
             self.df_encoder.replace([nan_value], np.nan, inplace=True)
