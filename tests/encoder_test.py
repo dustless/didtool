@@ -47,6 +47,8 @@ class TestEncoder(unittest.TestCase):
                              df_except.x2_encoder.to_list())
         self.assertListEqual(df.x3_encoder.to_list(),
                              df_except.x3_encoder.to_list())
+        self.assertListEqual(df.x4_encoder.to_list(),
+                             df_except.x4_encoder.to_list())
 
         np.testing.assert_array_equal(e.df_encoder.x1.to_list(),
                                       df_encoder.x1.to_list())
@@ -54,6 +56,8 @@ class TestEncoder(unittest.TestCase):
                                       df_encoder.x2.to_list())
         np.testing.assert_array_equal(e.df_encoder.x3.to_list(),
                                       df_encoder.x3.to_list())
+        np.testing.assert_array_equal(e.df_encoder.x4.to_list(),
+                                      df_encoder.x4.to_list())
 
         np.testing.assert_array_equal(e.df_encoder.x1_encoder.to_list(),
                                       df_encoder.x1_encoder.to_list())
@@ -61,3 +65,5 @@ class TestEncoder(unittest.TestCase):
                                       df_encoder.x2_encoder.to_list())
         np.testing.assert_array_equal(e.df_encoder.x3_encoder.to_list(),
                                       df_encoder.x3_encoder.to_list())
+        np.testing.assert_array_equal(e.df_encoder.x4_encoder.to_list(),
+                                      df_encoder.x4_encoder.to_list())
