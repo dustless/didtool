@@ -285,14 +285,14 @@ class CategoryTransformer(TransformerMixin):
     df_encoder : pd.DataFrame
         Easy for consumers to persist the encoding table
 
-    nan_value : '-999'
+    nan_value : 'nan'
         The default fill value for empty values
     """
 
     def __init__(self):
         self.map_encoder = {}
         self.df_encoder = pd.DataFrame()
-        self.nan_value = '-999'
+        self.nan_value = 'nan'
 
     def fit(self, x, columns: Union[list, str], max_bins=None,
             min_coverage=None):
@@ -342,7 +342,7 @@ class CategoryTransformer(TransformerMixin):
             # encode to 0 when all values is np.nan else n_bins-1
             map_encoder.update({'others': max(n_bins - 1, 0)})
 
-            # encode np.nan if this colunm has np.nan
+            # encode np.nan if this column has np.nan
             if flag:
                 map_encoder.update({self.nan_value: n_bins})
 
