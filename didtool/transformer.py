@@ -298,6 +298,7 @@ class CategoryTransformer(TransformerMixin):
             min_coverage=None):
         """
         fit category transformer
+
         Parameters
         ----------
         x: pd.DataFrame
@@ -308,16 +309,21 @@ class CategoryTransformer(TransformerMixin):
 
         max_bins: None or int
             max category of every encoded column
+            if 'max_bins' is None,
+            'min_coverage' will determines the numbers of category
 
         min_coverage: None or float
             min coverage of every encoded column
-
+            if 'max_bins' is not None,
+            'max_bins' will determines the numbers of category
+            when max_bins and min_coverage are both None,
+            numbers of category no limit
         """
         if isinstance(columns, str):
             columns = [columns]
 
         for col in columns:
-            flag = x[col].isnull().any()
+            has_nan = x[col].isnull().any()
 
             df_tmp = pd.DataFrame(x[col].value_counts())
             df_tmp.reset_index(inplace=True)
@@ -332,19 +338,15 @@ class CategoryTransformer(TransformerMixin):
                     if cnt >= x.shape[0] * min_coverage:
                         n_bins = i + 1
                         break
-            else:
-                # encode all category like sklearn.preprocessing.OrdinalEncoder
-                n_bins = n_bins
             map_encoder = {
-                key: val for val, key in enumerate(
+                key: val+1 for val, key in enumerate(
                     df_tmp.iloc[:n_bins][col].to_list())
             }
-            # encode to 0 when all values is np.nan else n_bins-1
-            map_encoder.update({'others': max(n_bins - 1, 0)})
+            map_encoder.update({'others': n_bins})
 
             # encode np.nan if this column has np.nan
-            if flag:
-                map_encoder.update({self.nan_value: n_bins})
+            if has_nan:
+                map_encoder.update({self.nan_value: 0})
 
             df_encoder = pd.DataFrame(pd.Series(map_encoder))
             df_encoder.reset_index(inplace=True)
@@ -375,10 +377,9 @@ class CategoryTransformer(TransformerMixin):
                 raise Exception('%s not in x' % key)
         for col in self.map_encoder:
             default_val = self.map_encoder.get(col).get('others')
-            x.loc[:, col + '_encoder'] = x[col].fillna(
+            x.loc[:, col] = x[col].fillna(
                 self.nan_value).apply(
                 lambda s: self.map_encoder.get(
                     col).get(s, default_val)).astype('category')
-            del x[col]
 
         return x
