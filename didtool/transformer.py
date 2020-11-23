@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
 import matplotlib.pyplot as plt
+from typing import Union
 
 from .utils import is_categorical
 from .cut import cut, DEFAULT_BINS, cut_with_bins
@@ -270,3 +271,115 @@ class WOETransformer(TransformerMixin):
                 raise Exception("column `%s` has not been fitted" % name)
 
         return pd.DataFrame(res)
+
+
+class CategoryTransformer(TransformerMixin):
+    """
+    Category Transformer
+
+    Attributes
+    --------
+    map_encoder : dict of encoder
+        After fitted, `map_encoder` used to encode oot data
+
+    df_encoder : pd.DataFrame
+        Easy for consumers to persist the encoding table
+
+    nan_value : 'nan'
+        The default fill value for empty values
+    """
+
+    def __init__(self):
+        self.map_encoder = {}
+        self.df_encoder = pd.DataFrame()
+        self.nan_value = 'nan'
+
+    def fit(self, x, columns: Union[list, str], max_bins=None,
+            min_coverage=None):
+        """
+        fit category transformer
+
+        Parameters
+        ----------
+        x: pd.DataFrame
+            data to fit transformer
+
+        columns: list or str
+            cloumns to be encoded
+
+        max_bins: None or int
+            max category of every encoded column
+            if 'max_bins' is None,
+            'min_coverage' will determines the numbers of category
+
+        min_coverage: None or float
+            min coverage of every encoded column
+            if 'max_bins' is not None,
+            'max_bins' will determines the numbers of category
+            when max_bins and min_coverage are both None,
+            numbers of category no limit
+        """
+        if isinstance(columns, str):
+            columns = [columns]
+
+        for col in columns:
+            has_nan = x[col].isnull().any()
+
+            df_tmp = pd.DataFrame(x[col].value_counts())
+            df_tmp.reset_index(inplace=True)
+            df_tmp.columns = [col, 'cnt']
+            n_bins = df_tmp.shape[0]
+            if max_bins:
+                n_bins = min(n_bins, max_bins)
+            elif min_coverage:
+                cnt = 0
+                for i, cnt_tmp in enumerate(df_tmp.cnt.to_list()):
+                    cnt += cnt_tmp
+                    if cnt >= x.shape[0] * min_coverage:
+                        n_bins = i + 1
+                        break
+            map_encoder = {
+                key: val+1 for val, key in enumerate(
+                    df_tmp.iloc[:n_bins][col].to_list())
+            }
+            map_encoder.update({'others': n_bins})
+
+            # encode np.nan if this column has np.nan
+            if has_nan:
+                map_encoder.update({self.nan_value: 0})
+
+            df_encoder = pd.DataFrame(pd.Series(map_encoder))
+            df_encoder.reset_index(inplace=True)
+            df_encoder.columns = [col, col + '_encoder']
+            self.df_encoder = pd.concat([self.df_encoder, df_encoder],
+                                        axis=1)
+            self.df_encoder.replace([self.nan_value], np.nan, inplace=True)
+            self.map_encoder.update({col: map_encoder})
+
+        return self
+
+    def transform(self, x) -> pd.DataFrame:
+        """
+        transform function for all columns needed category encode
+
+        Parameters
+        ----------
+        x: pd.DataFrame
+            data to transform
+
+        Returns
+        -------
+        pd.DataFrame with category encoded
+        """
+        x = x.copy()
+        for key in self.map_encoder:
+            if key not in x.columns:
+                raise Exception('%s not in x' % key)
+        for col in self.map_encoder:
+            default_val = self.map_encoder.get(col).get('others')
+            x.loc[:, col] = x[col].fillna(
+                self.nan_value).apply(
+                lambda s: self.map_encoder.get(
+                    col).get(s, default_val)).astype('category')
+
+        return x

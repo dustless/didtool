@@ -1,10 +1,9 @@
-import os
 import unittest
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 
-from didtool.transformer import SingleWOETransformer, WOETransformer
+from didtool.transformer import SingleWOETransformer, WOETransformer, \
+    CategoryTransformer
 
 
 class TestTransformer(unittest.TestCase):
@@ -71,3 +70,90 @@ class TestTransformer(unittest.TestCase):
         self.assertAlmostEqual(res['v5'][0], -0.216908, 6)
         self.assertAlmostEqual(res['v5'][1], 0.484547, 6)
         self.assertAlmostEqual(res['v5'][2], 0)
+
+    def test_category_transformer(self):
+        df = pd.DataFrame({
+            'x1': [1, 2, 1, 2, 1, 7.3, 0, 0, 0, 0, np.nan],
+            'x2': ['北京', '上海', '上海', '山东', '北京', '北京',
+                   np.nan, np.nan, np.nan, np.nan, np.nan],
+            'x3': [np.nan, np.nan, np.nan, np.nan, np.nan,
+                   np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+            'x4': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        })
+        df_except = pd.DataFrame({
+            'x1': [2, 3, 2, 3, 2, 4, 1, 1, 1, 1, 0],
+            'x2': [1, 2, 2, 3, 1, 1, 0, 0, 0, 0, 0],
+            'x3': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'x4': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        })
+        for col in df_except.columns:
+            df_except[col] = df_except[col].astype('category')
+
+        df_encoder = pd.DataFrame({
+            'x1': [0.0, 1.0, 2.0, 7.3, 'others', np.nan],
+            'x1_encoder': [1, 2, 3, 4, 4, 0],
+            'x2': ['北京', '上海', '山东', 'others', np.nan, np.nan],
+            'x2_encoder': [1.0, 2.0, 3.0, 3.0, 0.0, np.nan],
+            'x3': ['others', np.nan, np.nan, np.nan, np.nan, np.nan],
+            'x3_encoder': [0.0, 0.0, np.nan, np.nan, np.nan, np.nan],
+            'x4': [1, 'others', np.nan, np.nan, np.nan, np.nan],
+            'x4_encoder': [1.0, 1.0, np.nan, np.nan, np.nan, np.nan]
+        })
+
+        for col in df_except.columns:
+            df_encoder[col] = df_encoder[col].astype('category')
+
+        df_te = pd.DataFrame({
+            'x1': [1, 2, 1, 0, np.nan],
+            'x2': ['北京', '上海', '山东', np.nan, np.nan],
+            'x3': [np.nan, np.nan, np.nan, np.nan, np.nan, ],
+            'x4': [1, 1, 1, 1, 1]
+        })
+
+        df_te_except = pd.DataFrame({
+            'x1': [2, 3, 2, 1, 0],
+            'x2': [1, 2, 3, 0, 0],
+            'x3': [0, 0, 0, 0, 0],
+            'x4': [1, 1, 1, 1, 1]
+        })
+
+        ct = CategoryTransformer()
+        ct.fit(df, columns=df.columns.to_list(), max_bins=64)
+        df = ct.transform(df)
+        df_te = ct.transform(df_te)
+
+        self.assertListEqual(df.x1.to_list(),
+                             df_except.x1.to_list())
+        self.assertListEqual(df.x2.to_list(),
+                             df_except.x2.to_list())
+        self.assertListEqual(df.x3.to_list(),
+                             df_except.x3.to_list())
+        self.assertListEqual(df.x4.to_list(),
+                             df_except.x4.to_list())
+
+        np.testing.assert_array_equal(ct.df_encoder.x1.to_list(),
+                                      df_encoder.x1.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x2.to_list(),
+                                      df_encoder.x2.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x3.to_list(),
+                                      df_encoder.x3.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x4.to_list(),
+                                      df_encoder.x4.to_list())
+
+        np.testing.assert_array_equal(ct.df_encoder.x1_encoder.to_list(),
+                                      df_encoder.x1_encoder.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x2_encoder.to_list(),
+                                      df_encoder.x2_encoder.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x3_encoder.to_list(),
+                                      df_encoder.x3_encoder.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x4_encoder.to_list(),
+                                      df_encoder.x4_encoder.to_list())
+
+        self.assertListEqual(df_te.x1.to_list(),
+                             df_te_except.x1.to_list())
+        self.assertListEqual(df_te.x2.to_list(),
+                             df_te_except.x2.to_list())
+        self.assertListEqual(df_te.x3.to_list(),
+                             df_te_except.x3.to_list())
+        self.assertListEqual(df_te.x4.to_list(),
+                             df_te_except.x4.to_list())
