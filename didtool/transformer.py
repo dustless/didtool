@@ -387,20 +387,20 @@ class CategoryTransformer(TransformerMixin):
 
 class OneHotTransformer(TransformerMixin):
     """
-        OneHot Transformer
+    OneHot Transformer
 
-        Attributes
-        --------
-        map_encoder : dict of encoder
-            After fitted, `map_encoder` used to encode oot data
+    Attributes
+    --------
+    map_encoder : dict of encoder
+        After fitted, `map_encoder` used to encode oot data
 
-        length : int
-            length of fitted train data
-        """
+    _length : int
+        length of fitted train data
+    """
 
     def __init__(self):
         self.map_encoder = {}
-        self.length = 0
+        self._length = 0
 
     def fit(self, x, columns: Union[list, str]):
         """
@@ -423,7 +423,7 @@ class OneHotTransformer(TransformerMixin):
 
         for col in columns:
             self.map_encoder[col] = list(pd.unique(x[col]))
-            self.length += len(self.map_encoder[col])
+            self._length += len(self.map_encoder[col])
 
         return self
 
@@ -445,7 +445,7 @@ class OneHotTransformer(TransformerMixin):
             if key not in x.columns:
                 raise Exception('%s not in x' % key)
 
-        zero_matrix = np.zeros(shape=(x.shape[0], self.length), dtype=np.int8)
+        zero_matrix = np.zeros(shape=(x.shape[0], self._length), dtype=np.int8)
 
         cols = []
         i = 0
