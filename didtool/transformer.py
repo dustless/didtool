@@ -383,3 +383,82 @@ class CategoryTransformer(TransformerMixin):
                     col).get(s, default_val)).astype('category')
 
         return x
+
+
+class OneHotTransformer(TransformerMixin):
+    """
+    OneHot Transformer
+
+    Attributes
+    --------
+    map_encoder : dict of encoder
+        After fitted, `map_encoder` used to encode oot data
+
+    _features_length : int
+        length of fitted train data
+    """
+
+    def __init__(self):
+        self.map_encoder = {}
+        self._features_length = 0
+
+    def fit(self, x, columns: Union[list, str]):
+        """
+        fit oneHot transformer
+
+        Parameters
+        ----------
+        x: pd.DataFrame
+            data to fit transformer
+
+        columns: list or str
+            cloumns to be encoded
+
+        """
+        if isinstance(columns, str):
+            columns = [columns]
+        for col in columns:
+            if col not in x.columns:
+                raise Exception("%s not in x" % col)
+
+        for col in columns:
+            self.map_encoder[col] = list(pd.unique(x[col]))
+            self._features_length += len(self.map_encoder[col])
+
+        return self
+
+    def transform(self, x) -> pd.DataFrame:
+        """
+        transform function for all columns needed oneHot encode
+
+        Parameters
+        ----------
+        x: pd.DataFrame
+            data to transform
+
+        Returns
+        -------
+        pd.DataFrame with oneHot encoded
+        """
+        x = x.copy()
+        for key in self.map_encoder:
+            if key not in x.columns:
+                raise Exception('%s not in x' % key)
+
+        zero_matrix = np.zeros(shape=(x.shape[0],
+                                      self._features_length), dtype=np.int8)
+
+        cols = []
+        i = 0
+        for col in self.map_encoder:
+            for val in self.map_encoder.get(col):
+                cols.append(col + '_' + str(val))
+                zero_matrix[:, i] = [
+                    np.int8(1) if str(val) == str(item) else np.int8(0) for item
+                    in x[col]]
+                i += 1
+            del x[col]
+        dummies = pd.DataFrame(zero_matrix, columns=cols)
+        x.reset_index(drop=True, inplace=True)
+        x = x.join(dummies)
+        return x
