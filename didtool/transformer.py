@@ -394,13 +394,13 @@ class OneHotTransformer(TransformerMixin):
     map_encoder : dict of encoder
         After fitted, `map_encoder` used to encode oot data
 
-    _length : int
+    _features_length : int
         length of fitted train data
     """
 
     def __init__(self):
         self.map_encoder = {}
-        self._length = 0
+        self._features_length = 0
 
     def fit(self, x, columns: Union[list, str]):
         """
@@ -423,7 +423,7 @@ class OneHotTransformer(TransformerMixin):
 
         for col in columns:
             self.map_encoder[col] = list(pd.unique(x[col]))
-            self._length += len(self.map_encoder[col])
+            self._features_length += len(self.map_encoder[col])
 
         return self
 
@@ -445,7 +445,8 @@ class OneHotTransformer(TransformerMixin):
             if key not in x.columns:
                 raise Exception('%s not in x' % key)
 
-        zero_matrix = np.zeros(shape=(x.shape[0], self._length), dtype=np.int8)
+        zero_matrix = np.zeros(shape=(x.shape[0],
+                                      self._features_length), dtype=np.int8)
 
         cols = []
         i = 0
