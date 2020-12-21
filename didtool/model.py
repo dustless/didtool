@@ -4,7 +4,7 @@ import os
 import lightgbm as lgb
 import pandas as pd
 import numpy as np
-import json
+import joblib
 from sklearn.metrics.ranking import roc_auc_score
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
@@ -246,7 +246,6 @@ class LGBModelSingle:
                          with_repr=False)
 
         if export_pkl:
-            from sklearn.externals import joblib
             pkl_file = "%s_%s.pkl" % (self.model_name, date_str)
             joblib.dump(self.model, os.path.join(self.out_path, pkl_file))
 

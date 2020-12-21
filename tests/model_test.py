@@ -50,7 +50,7 @@ class TestModel(unittest.TestCase):
         m.save_feature_importance()
 
         # test export
-        m.export()
+        m.export(export_pkl=True)
 
     def test_model_stacking(self):
         df = pd.read_csv('samples.csv')
