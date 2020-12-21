@@ -19,14 +19,18 @@ class TestSelector(unittest.TestCase):
                    np.nan, np.nan, np.nan, np.nan, np.nan, np.nan,
                    np.nan, np.nan, np.nan, np.nan, np.nan, np.nan,
                    np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+            "x4": [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4,
+                   np.nan, np.nan, np.nan, np.nan, np.nan, np.nan,
+                   -1, -1, -1, -1, -1, -1, 9, 9, 9]
         })
         selector = Selector(df)
-        selector.drop_missing(0.5)
+        selector.drop_missing(0.5, missing_value=-1)
         self.assertAlmostEqual(selector.missing_stats['missing_rate'][0], 1.0)
         self.assertAlmostEqual(selector.missing_stats['missing_rate'][1], 0.5)
-        self.assertAlmostEqual(selector.missing_stats['missing_rate'][2], 0)
+        self.assertAlmostEqual(selector.missing_stats['missing_rate'][2], 0.4)
+        self.assertAlmostEqual(selector.missing_stats['missing_rate'][3], 0)
         self.assertListEqual(selector.drop_cols, ["x3"])
-        self.assertEqual(selector.data.shape[1], 2)
+        self.assertEqual(selector.data.shape[1], 3)
 
     def test_drop_iv(self):
         df = pd.DataFrame({

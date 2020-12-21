@@ -74,13 +74,21 @@ class Selector:
         # Hold all columns dropped
         self.drop_cols = []
 
-    def drop_missing(self, missing_threshold=0.9):
+    def drop_missing(self, missing_threshold=0.9, missing_value=None):
         """
         Drop the features with a fraction of missing values above
          `missing_threshold`
+
+         If `missing_value` specified, then values equal to `missing_value` will
+          also be treated as missing
         """
         # Calculate the fraction of missing in each column
-        missing_series = self.data.isnull().sum() / self.data.shape[0]
+        total = self.data.shape[0]
+        if missing_value is not None:
+            missing_series = (self.data.isnull() | (self.data == missing_value)
+                              ).sum() / total
+        else:
+            missing_series = self.data.isnull().sum() / total
         missing_df = pd.DataFrame(missing_series).rename(
             columns={'index': 'feature', 0: 'missing_rate'})
 
