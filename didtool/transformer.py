@@ -88,9 +88,9 @@ class SingleWOETransformer(TransformerMixin):
 
         value = np.sort(np.unique(x))
         num_bins = len(value)
-        group_count = np.zeros(num_bins)
+        group_count = np.zeros(num_bins, dtype=np.int64)
         group_rate = np.zeros(num_bins)
-        positive_count = np.zeros(num_bins)
+        positive_count = np.zeros(num_bins, dtype=np.int64)
         positive_rate = np.zeros(num_bins)
         woe_list = np.zeros(num_bins)
         iv_list = np.zeros(num_bins)
