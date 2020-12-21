@@ -36,7 +36,8 @@ def is_categorical(series):
     boolean
         Whether or not the array-like is of a Categorical instance.
     """
-    return pd.api.types.is_categorical(series)
+    # return pd.core.dtypes.api.is_categorical_dtype(series)
+    return pd.api.types.is_categorical_dtype(series)
 
 
 def fillna(data, by=-1):
