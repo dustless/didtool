@@ -467,7 +467,7 @@ def plot_pr_threshold(y_true, y_pred, out_path=None,
         plt.show()
 
 
-def plot_ks(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png',
+def plot_ks(y_true, y_pred, out_path=None, file_name='pr_ks.png',
             cal_method="plot_ks_in_cum"):
     """
     Compute plot_ks ,plot ks curve and find the max ks value.
@@ -494,15 +494,14 @@ def plot_ks(y_pred=None, y_true=None, out_path=None, file_name='pr_ks.png',
         raise Exception("Invalid plot_ks mode!")
 
     if cal_method == 'plot_ks_in_cum':
-        plot_ks_in_cum(y_pred=y_pred, y_true=y_true, out_path=out_path,
+        plot_ks_in_cum(y_true, y_pred, out_path=out_path,
                        file_name=file_name)
     else:
-        plot_ks_in_tpr_fpr(y_pred=y_pred, y_true=y_true, out_path=out_path,
+        plot_ks_in_tpr_fpr(y_true, y_pred, out_path=out_path,
                            file_name=file_name)
 
 
-def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None,
-                   file_name='pr_ks.png'):
+def plot_ks_in_cum(y_true, y_pred, out_path=None, file_name='pr_ks.png'):
     """
     Compute plot_ks in the formula of max(Cum.B_i/Bad_total-Cum.G_i/Good_total)
     , plot ks curve and find the max ks value.
@@ -567,7 +566,7 @@ def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None,
     # summary and plot
     # print('ks_value is ' + str(np.round(ks_value, 4)) + ' at pop = ' + str(
     #     np.round(ks_pop, 4)))
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(8, 8))
     plt.plot(ksds.tile, ksds.cumsum_good, label='cum_good',
              color='blue', linestyle='-', linewidth=2)
     plt.plot(ksds.tile, ksds.cumsum_bad, label='cum_bad',
@@ -588,8 +587,7 @@ def plot_ks_in_cum(y_pred=None, y_true=None, out_path=None,
         plt.show()
 
 
-def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None,
-                       file_name='pr_ks.png'):
+def plot_ks_in_tpr_fpr(y_true, y_pred, out_path=None, file_name='pr_ks.png'):
     """
     Compute plot_ks in the formula of max(tpr_i-fpr_i)
     , plot ks curve and find the max ks value.
@@ -614,7 +612,7 @@ def plot_ks_in_tpr_fpr(y_pred=None, y_true=None, out_path=None,
     ks_value = max(abs(fpr - tpr))
 
     # plot
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(8, 8))
     plt.plot(tpr, label='bad')
     plt.plot(fpr, label='good')
     plt.plot(abs(fpr - tpr), label='diff')

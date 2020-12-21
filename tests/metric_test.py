@@ -1,5 +1,7 @@
 import unittest
 import numpy as np
+import pandas as pd
+import random
 import didtool
 
 
@@ -32,13 +34,10 @@ class TestMetric(unittest.TestCase):
         self.assertAlmostEqual(psi, 0.07701635339554946)
 
     def test_ks(self):
-        import pandas as pd
-        import random
         data = pd.read_csv("samples.csv")[['target']]
 
-        data['pro'] = data['target'].apply(lambda x: random.uniform(0, 0.8) if x < 1 else random.uniform(0.2, 1))
-        y_pre = data['pro']
-        y_real = data['target']
+        data['pro'] = data['target'].apply(
+            lambda x: random.uniform(0, 0.8) if x < 1 else random.uniform(0.2, 1))
 
-        #ks = didtool.plot_ks_in_cum(y_pre, y_real)
-        #ks_compare = didtool.plot_ks_in_tpr_fpr(y_pre, y_real)
+        # didtool.plot_ks_in_cum(data['target'], data['pro'], '.')
+        # didtool.plot_ks_in_tpr_fpr(data['target'], data['pro'], '.')
