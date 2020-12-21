@@ -185,8 +185,8 @@ def _psi_continuous(expected_array, actual_array, n_bins=DEFAULT_BINS,
     psi_df : DataFrame, only returned when `detail` is True
         detailed distribution of expect and actual arrays
     """
-    expected_bin_values, bins = step_cut(expected_array, n_bins,
-                                         return_bins=True)
+    expected_bin_values, bins = step_cut(
+        expected_array, n_bins, return_bins=True, remove_empty_bins=False)
     # cut actual array with the same bins as expected array
     actual_bin_values = cut_with_bins(actual_array, bins)
     has_nan = any(expected_bin_values == -1) or any(actual_bin_values == -1)

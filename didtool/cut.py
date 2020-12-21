@@ -12,10 +12,10 @@ from scipy.stats import chi2
 DEFAULT_BINS = 10
 
 
-def step_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False):
+def step_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False,
+             remove_empty_bins=True):
     """
     Cut values into discrete intervals by step.
-    Auto merge empty buckets.
 
     Parameters
     ----------
@@ -28,6 +28,8 @@ def step_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False):
     nan: Replace NA values with `nan` in the result if `nan` is not None.
     return_bins : bool, default False
         Whether to return the bins or not.
+    remove_empty_bins : bool, default True
+        Whether remove empty bins
 
     Returns
     -------
@@ -40,20 +42,25 @@ def step_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False):
     """
     out, bins = pd.cut(x, n_bins, labels=False, retbins=True)
 
-    # merge empty bins
-    cut_bins = []
-    unique_bins = np.sort(np.unique(out))
-    for i in range(1, n_bins):
-        if i in unique_bins:
-            cut_bins.append(bins[i])
-    cut_bins = [-np.inf] + cut_bins + [np.inf]
+    if remove_empty_bins:
+        # merge empty bins
+        cut_bins = []
+        unique_bins = np.sort(np.unique(out))
+        for i in range(1, n_bins):
+            if i in unique_bins:
+                cut_bins.append(bins[i])
+        cut_bins = [-np.inf] + cut_bins + [np.inf]
+        # cut again with merged bins
+        out, bins = pd.cut(x, cut_bins, labels=False, retbins=True)
+    else:
+        cut_bins = bins
+        cut_bins[0] = -np.inf
+        cut_bins[-1] = np.inf
 
-    out, bins = pd.cut(x, cut_bins, labels=False, retbins=True)
     if nan is not None:
         out = fillna(out, nan).astype(np.int)
 
     if return_bins:
-
         return out, cut_bins
     else:
         return out
