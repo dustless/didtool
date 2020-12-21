@@ -15,6 +15,8 @@ DEFAULT_BINS = 10
 def step_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False):
     """
     Cut values into discrete intervals by step.
+    Auto merge empty buckets.
+
     Parameters
     ----------
     x : array-like
@@ -37,13 +39,22 @@ def step_cut(x, n_bins=DEFAULT_BINS, nan=-1, return_bins=False):
         The computed or specified bins. Only returned when `return_bins=True`.
     """
     out, bins = pd.cut(x, n_bins, labels=False, retbins=True)
+
+    # merge empty bins
+    cut_bins = []
+    unique_bins = np.sort(np.unique(out))
+    for i in range(1, n_bins):
+        if i in unique_bins:
+            cut_bins.append(bins[i])
+    cut_bins = [-np.inf] + cut_bins + [np.inf]
+
+    out, bins = pd.cut(x, cut_bins, labels=False, retbins=True)
     if nan is not None:
         out = fillna(out, nan).astype(np.int)
 
     if return_bins:
-        bins[0] = -np.inf
-        bins[-1] = np.inf
-        return out, bins
+
+        return out, cut_bins
     else:
         return out
 
