@@ -2,8 +2,7 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from didtool.transformer import SingleWOETransformer, WOETransformer, \
-    CategoryTransformer, OneHotTransformer
+import didtool
 
 
 class TestTransformer(unittest.TestCase):
@@ -12,7 +11,7 @@ class TestTransformer(unittest.TestCase):
         x = df['v1']
         y = df['target']
 
-        transformer = SingleWOETransformer()
+        transformer = didtool.SingleWOETransformer()
         transformer.fit(x, y, 'v1')
         self.assertListEqual(
             list(np.round(transformer.bins, 5)),
@@ -58,7 +57,7 @@ class TestTransformer(unittest.TestCase):
         y = df['target']
         x['v5'] = x['v5'].astype('category')
 
-        transformer = WOETransformer()
+        transformer = didtool.WOETransformer()
         transformer.fit(x, y)
         print(transformer.woe_df)
 
@@ -117,7 +116,7 @@ class TestTransformer(unittest.TestCase):
             'x4': [1, 1, 1, 1, 1]
         })
 
-        ct = CategoryTransformer()
+        ct = didtool.CategoryTransformer()
         ct.fit(df, columns=df.columns.to_list(), max_bins=64)
         df = ct.transform(df)
         df_test = ct.transform(df_test)
@@ -187,7 +186,7 @@ class TestTransformer(unittest.TestCase):
                                        'x2_福建省': [0, 0, 0, 0]
                                        })
 
-        oht = OneHotTransformer()
+        oht = didtool.OneHotTransformer()
         oht.fit(df_train, columns=['x1', 'x2'])
         df_train_except = oht.transform(df_train)
         df_test_except = oht.transform(df_test)
@@ -221,3 +220,76 @@ class TestTransformer(unittest.TestCase):
                              df_test_except['x2_浙江省'].to_list())
         self.assertListEqual(df_test_encode['x2_福建省'].to_list(),
                              df_test_except['x2_福建省'].to_list())
+
+    def test_list_transformer(self):
+        df_train = pd.DataFrame({
+            'x1': ['1,2,5', '2,3,4', '2,4,5', np.nan],
+            'x2': ['a,c', 'a,b', 'b', 'a']
+        })
+
+        df_test = pd.DataFrame({
+            'x1': [np.nan, '1,2,6'],
+            'x2': ['a,c,d', np.nan]
+        })
+
+        transformer = didtool.ListTransformer()
+        transformer.fit(df_train, columns=['x1', 'x2'])
+        df_train_encode = transformer.transform(df_train)
+        df_train_expect = pd.DataFrame([
+            {'x1_1': 1, 'x1_2': 1, 'x1_5': 1, 'x2_a': 1, 'x2_c': 1},
+            {'x1_2': 1, 'x1_3': 1, 'x1_4': 1, 'x2_a': 1, 'x2_b': 1},
+            {'x1_2': 1, 'x1_4': 1, 'x1_5': 1, 'x2_b': 1, },
+            {'x1_nan': 1, 'x2_a': 1}
+        ], columns=df_train_encode.columns).fillna(0).astype(np.int8)
+
+        self.assertListEqual(df_train_encode.loc[0, :].tolist(),
+                             df_train_expect.loc[0, :].tolist())
+        self.assertListEqual(df_train_encode.loc[1, :].tolist(),
+                             df_train_expect.loc[1, :].tolist())
+
+        df_test_encode = transformer.transform(df_test)
+        df_test_expect = pd.DataFrame([
+            {'x1_nan': 1, 'x2_a': 1, 'x2_c': 1},
+            {'x1_1': 1, 'x1_2': 1},
+        ], columns=df_test_encode.columns).fillna(0).astype(np.int8)
+        self.assertListEqual(df_test_encode.loc[0, :].tolist(),
+                             df_test_expect.loc[0, :].tolist())
+        self.assertListEqual(df_test_encode.loc[1, :].tolist(),
+                             df_test_expect.loc[1, :].tolist())
+
+    def test_list_transformer2(self):
+        df_train = pd.DataFrame({
+            'x1': ['1:0.9,2:0.85,4:0.8', '2:0.7,3:0.6,4:0.5',
+                   '2:0.4,4:0.3', np.nan],
+            'x2': ['a:0.11,c:0.22', 'a:0.33,b:0.44', 'b:0.99', 'a:0.55']
+        })
+
+        df_test = pd.DataFrame({
+            'x1': [np.nan, '1:0.25,2:0.35,6:0.45'],
+            'x2': ['a:0.66,c:0.77,d:0.88', 'b:0.99']
+        })
+
+        transformer = didtool.ListTransformer()
+        transformer.fit(df_train, columns=['x1', 'x2'], sub_sep=':')
+        df_train_encode = transformer.transform(df_train)
+        df_train_expect = pd.DataFrame([
+            {'x1_1': 0.9, 'x1_2': 0.85, 'x1_4': 0.8, 'x2_a': 0.11, 'x2_c': 0.22},
+            {'x1_2': 0.7, 'x1_3': 0.6, 'x1_4': 0.5, 'x2_a': 0.33, 'x2_b': 0.44},
+            {'x1_2': 0.4, 'x1_4': 0.3, 'x2_b': 0.99},
+            {'x1_nan': 1, 'x2_a': 0.55}
+        ], columns=df_train_encode.columns).fillna(0)
+
+        self.assertListEqual(df_train_encode.loc[0, :].tolist(),
+                             df_train_expect.loc[0, :].tolist())
+        self.assertListEqual(df_train_encode.loc[1, :].tolist(),
+                             df_train_expect.loc[1, :].tolist())
+
+        df_test_encode = transformer.transform(df_test)
+        df_test_expect = pd.DataFrame([
+            {'x1_nan': 1, 'x2_a': 0.66, 'x2_c': 0.77},
+            {'x1_1': 0.25, 'x1_2': 0.35, 'x2_b': 0.99},
+        ], columns=df_test_encode.columns).fillna(0)
+        self.assertListEqual(df_test_encode.loc[0, :].tolist(),
+                             df_test_expect.loc[0, :].tolist())
+        self.assertListEqual(df_test_encode.loc[1, :].tolist(),
+                             df_test_expect.loc[1, :].tolist())

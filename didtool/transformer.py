@@ -1,4 +1,5 @@
 from multiprocessing import Pool, cpu_count
+from collections import  Counter
 
 import numpy as np
 import pandas as pd
@@ -339,7 +340,7 @@ class CategoryTransformer(TransformerMixin):
                         n_bins = i + 1
                         break
             map_encoder = {
-                key: val+1 for val, key in enumerate(
+                key: val + 1 for val, key in enumerate(
                     df_tmp.iloc[:n_bins][col].to_list())
             }
             map_encoder.update({'others': n_bins})
@@ -396,13 +397,18 @@ class OneHotTransformer(TransformerMixin):
 
     _features_length : int
         length of fitted train data
+
+    nan_value : 'nan'
+        The default fill value for empty values
     """
 
     def __init__(self):
         self.map_encoder = {}
         self._features_length = 0
+        self.nan_value = 'nan'
 
-    def fit(self, x, columns: Union[list, str]):
+    def fit(self, x, columns: Union[list, str], max_bins=None,
+            min_coverage=None):
         """
         fit oneHot transformer
 
@@ -414,6 +420,17 @@ class OneHotTransformer(TransformerMixin):
         columns: list or str
             cloumns to be encoded
 
+        max_bins: None or int
+            max category of every encoded column
+            if 'max_bins' is None,
+            'min_coverage' will determines the numbers of category
+
+        min_coverage: None or float
+            min coverage of every encoded column
+            if 'max_bins' is not None,
+            'max_bins' will determines the numbers of category
+            when max_bins and min_coverage are both None,
+            numbers of category no limit
         """
         if isinstance(columns, str):
             columns = [columns]
@@ -422,8 +439,29 @@ class OneHotTransformer(TransformerMixin):
                 raise Exception("%s not in x" % col)
 
         for col in columns:
-            self.map_encoder[col] = list(pd.unique(x[col]))
-            self._features_length += len(self.map_encoder[col])
+            has_nan = x[col].isnull().any()
+
+            df_tmp = pd.DataFrame(x[col].value_counts())
+            df_tmp.reset_index(inplace=True)
+            df_tmp.columns = [col, 'cnt']
+            n_bins = df_tmp.shape[0]
+            if max_bins:
+                n_bins = min(n_bins, max_bins)
+            elif min_coverage:
+                cnt = 0
+                for i, cnt_tmp in enumerate(df_tmp.cnt.to_list()):
+                    cnt += cnt_tmp
+                    if cnt >= x.shape[0] * min_coverage:
+                        n_bins = i + 1
+                        break
+            col_vals = df_tmp.iloc[:n_bins][col].to_list() + ['others']
+
+            # encode np.nan if this column has np.nan
+            if has_nan:
+                col_vals.append(self.nan_value)
+
+            self.map_encoder.update({col: col_vals})
+            self._features_length += len(col_vals)
 
         return self
 
@@ -440,17 +478,19 @@ class OneHotTransformer(TransformerMixin):
         -------
         pd.DataFrame with oneHot encoded
         """
-        x = x.copy()
+        x = x.fillna(self.nan_value)
         for key in self.map_encoder:
             if key not in x.columns:
                 raise Exception('%s not in x' % key)
 
-        zero_matrix = np.zeros(shape=(x.shape[0],
-                                      self._features_length), dtype=np.int8)
+        zero_matrix = np.zeros(shape=(x.shape[0], self._features_length),
+                               dtype=np.int8)
 
         cols = []
         i = 0
         for col in self.map_encoder:
+            x[col] = x[col].apply(
+                lambda s: 'others' if s not in self.map_encoder[col] else s)
             for val in self.map_encoder.get(col):
                 cols.append(col + '_' + str(val))
                 zero_matrix[:, i] = [
@@ -462,3 +502,144 @@ class OneHotTransformer(TransformerMixin):
         x.reset_index(drop=True, inplace=True)
         x = x.join(dummies)
         return x
+
+
+class ListTransformer(TransformerMixin):
+    """
+    Multi-Hot Transformer
+    Expand list values to columns
+
+    example:
+      "0,1,4" -> [1,1,0,0,1]
+      "0:10,1:5,4:20" -> [10,5,0,0,20]
+
+    Attributes
+    --------
+    map_encoder : dict of encoder
+        After fitted, `map_encoder` used to encode oot data
+
+    nan_value : 'nan'
+        The default fill value for empty values
+        If `sub_sep` specified, replace nan value as "nan{sub_sep}1"
+
+    sep : str
+        separator of list value
+
+    sub_sep : str, default None
+        sub-separator of list value
+
+    dtype: data-type of output data
+        default np.int8 if `sub_sep` not set, otherwise np.float64
+    """
+
+    def __init__(self):
+        self.map_encoder = {}
+        self.nan_value = 'nan'
+        self.sep = ','
+        self.sub_sep = None
+        self.dtype = np.int8
+
+    def fit(self, x, columns: Union[list, str], sep=',', sub_sep=None,
+            max_bins=None):
+        """
+        fit Multi-Hot Transformer
+
+        Parameters
+        ----------
+        x: pd.DataFrame
+            data to fit transformer
+
+        columns: list or str
+            cloumns to be encoded
+
+        sep : str
+            separator of list value
+
+        sub_sep : str, default None
+            sub-separator of list value
+
+        max_bins: None or int
+            max number of encoding bins
+        """
+        if isinstance(columns, str):
+            columns = [columns]
+        for col in columns:
+            if col not in x.columns:
+                raise Exception("%s not in x" % col)
+
+        self.sep = sep
+        self.sub_sep = sub_sep
+        # 如果指定了二级分割符，那么默认的输出数据类型改成np.float64
+        # 并且将nan_value做下改动，以便配合按二级分割符分割字符串
+        if self.sub_sep:
+            self.dtype = np.float64
+            self.nan_value = "{0}{1}{2}".format('nan', self.sub_sep, 1)
+
+        for col in columns:
+            x_col = x[col].fillna(self.nan_value).tolist()
+
+            feat_counter = Counter()
+            for item_list_str in x_col:
+                item_list = item_list_str.split(sep)
+                # 如果有二级分隔符，则列名取二级分隔符左值
+                if sub_sep:
+                    feat_counter.update([item.split(sub_sep)[0]
+                                         for item in item_list])
+                else:
+                    feat_counter.update(item_list)
+
+            if max_bins:
+                feat_names =\
+                    [item[0] for item in feat_counter.most_common(max_bins)]
+            else:
+                feat_names = feat_counter.keys()
+
+            self.map_encoder.update({col: feat_names})
+
+        return self
+
+    def transform(self, x, dtype=None) -> pd.DataFrame:
+        """
+        transform function for all columns needed oneHot encode
+
+        Parameters
+        ----------
+        x: pd.DataFrame
+            data to transform
+
+        dtype : data-type, optional
+            The desired data-type for output data
+
+        Returns
+        -------
+        pd.DataFrame with list encoded
+        """
+        x = x.fillna(self.nan_value)
+        for key in self.map_encoder:
+            if key not in x.columns:
+                raise Exception('%s not in x' % key)
+
+        res = []
+        for i in range(x.shape[0]):
+            row_res = {}
+            for col in self.map_encoder:
+                item_list = x.loc[i, col].split(self.sep)
+                if self.sub_sep:
+                    row_res.update({
+                        "%s_%s" % (col, item.split(self.sub_sep)[0]):
+                            item.split(self.sub_sep)[1]
+                        for item in item_list
+                        if item.split(self.sub_sep)[0] in self.map_encoder[col]
+                    })
+                else:
+                    row_res.update({
+                        "%s_%s" % (col, item): 1 for item in item_list
+                        if item in self.map_encoder[col]
+                    })
+            res.append(row_res)
+
+        feat_names = ["%s_%s" % (c, f) for c in self.map_encoder
+                      for f in self.map_encoder[c]]
+        res_df = pd.DataFrame(res, columns=sorted(feat_names)).\
+            fillna(0).astype(dtype or self.dtype)
+        return res_df
