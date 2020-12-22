@@ -499,9 +499,7 @@ class OneHotTransformer(TransformerMixin):
                 i += 1
             del x[col]
         dummies = pd.DataFrame(zero_matrix, columns=cols)
-        x.reset_index(drop=True, inplace=True)
-        x = x.join(dummies)
-        return x
+        return dummies
 
 
 class ListTransformer(TransformerMixin):
