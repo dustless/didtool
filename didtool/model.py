@@ -258,6 +258,7 @@ class LGBModelSingle:
         n_iter: the number of the total finds loop
         searching_space: the searching space of parameters
         """
+
         def _convert_param_types(model_param):
             """
             convert model param types to correct types

@@ -1,5 +1,5 @@
 from multiprocessing import Pool, cpu_count
-from collections import  Counter
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -587,7 +587,7 @@ class ListTransformer(TransformerMixin):
                     feat_counter.update(item_list)
 
             if max_bins:
-                feat_names =\
+                feat_names = \
                     [item[0] for item in feat_counter.most_common(max_bins)]
             else:
                 feat_names = feat_counter.keys()
@@ -638,6 +638,6 @@ class ListTransformer(TransformerMixin):
 
         feat_names = ["%s_%s" % (c, f) for c in self.map_encoder
                       for f in self.map_encoder[c]]
-        res_df = pd.DataFrame(res, columns=sorted(feat_names)).\
+        res_df = pd.DataFrame(res, columns=sorted(feat_names)). \
             fillna(0).astype(dtype or self.dtype)
         return res_df
