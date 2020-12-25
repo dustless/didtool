@@ -117,45 +117,45 @@ class TestTransformer(unittest.TestCase):
         })
 
         ct = didtool.CategoryTransformer()
-        ct.fit(df, columns=df.columns.to_list(), max_bins=64)
+        ct.fit(df, max_bins=64)
         df = ct.transform(df)
         df_test = ct.transform(df_test)
 
-        self.assertListEqual(df.x1.to_list(),
-                             df_expect.x1.to_list())
-        self.assertListEqual(df.x2.to_list(),
-                             df_expect.x2.to_list())
-        self.assertListEqual(df.x3.to_list(),
-                             df_expect.x3.to_list())
-        self.assertListEqual(df.x4.to_list(),
-                             df_expect.x4.to_list())
+        self.assertListEqual(df.x1.tolist(),
+                             df_expect.x1.tolist())
+        self.assertListEqual(df.x2.tolist(),
+                             df_expect.x2.tolist())
+        self.assertListEqual(df.x3.tolist(),
+                             df_expect.x3.tolist())
+        self.assertListEqual(df.x4.tolist(),
+                             df_expect.x4.tolist())
 
-        np.testing.assert_array_equal(ct.df_encoder.x1.to_list(),
-                                      df_encoder.x1.to_list())
-        np.testing.assert_array_equal(ct.df_encoder.x2.to_list(),
-                                      df_encoder.x2.to_list())
-        np.testing.assert_array_equal(ct.df_encoder.x3.to_list(),
-                                      df_encoder.x3.to_list())
-        np.testing.assert_array_equal(ct.df_encoder.x4.to_list(),
-                                      df_encoder.x4.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x1.tolist(),
+                                      df_encoder.x1.tolist())
+        np.testing.assert_array_equal(ct.df_encoder.x2.tolist(),
+                                      df_encoder.x2.tolist())
+        np.testing.assert_array_equal(ct.df_encoder.x3.tolist(),
+                                      df_encoder.x3.tolist())
+        np.testing.assert_array_equal(ct.df_encoder.x4.tolist(),
+                                      df_encoder.x4.tolist())
 
-        np.testing.assert_array_equal(ct.df_encoder.x1_encoder.to_list(),
-                                      df_encoder.x1_encoder.to_list())
-        np.testing.assert_array_equal(ct.df_encoder.x2_encoder.to_list(),
-                                      df_encoder.x2_encoder.to_list())
-        np.testing.assert_array_equal(ct.df_encoder.x3_encoder.to_list(),
-                                      df_encoder.x3_encoder.to_list())
-        np.testing.assert_array_equal(ct.df_encoder.x4_encoder.to_list(),
-                                      df_encoder.x4_encoder.to_list())
+        np.testing.assert_array_equal(ct.df_encoder.x1_encoder.tolist(),
+                                      df_encoder.x1_encoder.tolist())
+        np.testing.assert_array_equal(ct.df_encoder.x2_encoder.tolist(),
+                                      df_encoder.x2_encoder.tolist())
+        np.testing.assert_array_equal(ct.df_encoder.x3_encoder.tolist(),
+                                      df_encoder.x3_encoder.tolist())
+        np.testing.assert_array_equal(ct.df_encoder.x4_encoder.tolist(),
+                                      df_encoder.x4_encoder.tolist())
 
-        self.assertListEqual(df_test.x1.to_list(),
-                             df_test_expect.x1.to_list())
-        self.assertListEqual(df_test.x2.to_list(),
-                             df_test_expect.x2.to_list())
-        self.assertListEqual(df_test.x3.to_list(),
-                             df_test_expect.x3.to_list())
-        self.assertListEqual(df_test.x4.to_list(),
-                             df_test_expect.x4.to_list())
+        self.assertListEqual(df_test.x1.tolist(),
+                             df_test_expect.x1.tolist())
+        self.assertListEqual(df_test.x2.tolist(),
+                             df_test_expect.x2.tolist())
+        self.assertListEqual(df_test.x3.tolist(),
+                             df_test_expect.x3.tolist())
+        self.assertListEqual(df_test.x4.tolist(),
+                             df_test_expect.x4.tolist())
 
     def test_onehot_transformer(self):
         df_train = pd.DataFrame({
@@ -187,39 +187,39 @@ class TestTransformer(unittest.TestCase):
                                        })
 
         oht = didtool.OneHotTransformer()
-        oht.fit(df_train, columns=['x1', 'x2'])
+        oht.fit(df_train)
         df_train_encode = oht.transform(df_train)
         df_test_encode = oht.transform(df_test)
 
-        self.assertListEqual(df_train_expect['x1_1.0'].to_list(),
-                             df_train_encode['x1_1.0'].to_list())
-        self.assertListEqual(df_train_expect['x1_2.0'].to_list(),
-                             df_train_encode['x1_2.0'].to_list())
-        self.assertListEqual(df_train_expect['x1_nan'].to_list(),
-                             df_train_encode['x1_nan'].to_list())
-        self.assertListEqual(df_train_expect['x2_河南省'].to_list(),
-                             df_train_encode['x2_河南省'].to_list())
-        self.assertListEqual(df_train_expect['x2_nan'].to_list(),
-                             df_train_encode['x2_nan'].to_list())
-        self.assertListEqual(df_train_expect['x2_浙江省'].to_list(),
-                             df_train_encode['x2_浙江省'].to_list())
-        self.assertListEqual(df_train_expect['x2_福建省'].to_list(),
-                             df_train_encode['x2_福建省'].to_list())
+        self.assertListEqual(df_train_expect['x1_1.0'].tolist(),
+                             df_train_encode['x1_1.0'].tolist())
+        self.assertListEqual(df_train_expect['x1_2.0'].tolist(),
+                             df_train_encode['x1_2.0'].tolist())
+        self.assertListEqual(df_train_expect['x1_nan'].tolist(),
+                             df_train_encode['x1_nan'].tolist())
+        self.assertListEqual(df_train_expect['x2_河南省'].tolist(),
+                             df_train_encode['x2_河南省'].tolist())
+        self.assertListEqual(df_train_expect['x2_nan'].tolist(),
+                             df_train_encode['x2_nan'].tolist())
+        self.assertListEqual(df_train_expect['x2_浙江省'].tolist(),
+                             df_train_encode['x2_浙江省'].tolist())
+        self.assertListEqual(df_train_expect['x2_福建省'].tolist(),
+                             df_train_encode['x2_福建省'].tolist())
 
-        self.assertListEqual(df_test_expect['x1_1.0'].to_list(),
-                             df_test_encode['x1_1.0'].to_list())
-        self.assertListEqual(df_test_expect['x1_2.0'].to_list(),
-                             df_test_encode['x1_2.0'].to_list())
-        self.assertListEqual(df_test_expect['x1_nan'].to_list(),
-                             df_test_encode['x1_nan'].to_list())
-        self.assertListEqual(df_test_expect['x2_河南省'].to_list(),
-                             df_test_encode['x2_河南省'].to_list())
-        self.assertListEqual(df_test_expect['x2_nan'].to_list(),
-                             df_test_encode['x2_nan'].to_list())
-        self.assertListEqual(df_test_expect['x2_浙江省'].to_list(),
-                             df_test_encode['x2_浙江省'].to_list())
-        self.assertListEqual(df_test_expect['x2_福建省'].to_list(),
-                             df_test_encode['x2_福建省'].to_list())
+        self.assertListEqual(df_test_expect['x1_1.0'].tolist(),
+                             df_test_encode['x1_1.0'].tolist())
+        self.assertListEqual(df_test_expect['x1_2.0'].tolist(),
+                             df_test_encode['x1_2.0'].tolist())
+        self.assertListEqual(df_test_expect['x1_nan'].tolist(),
+                             df_test_encode['x1_nan'].tolist())
+        self.assertListEqual(df_test_expect['x2_河南省'].tolist(),
+                             df_test_encode['x2_河南省'].tolist())
+        self.assertListEqual(df_test_expect['x2_nan'].tolist(),
+                             df_test_encode['x2_nan'].tolist())
+        self.assertListEqual(df_test_expect['x2_浙江省'].tolist(),
+                             df_test_encode['x2_浙江省'].tolist())
+        self.assertListEqual(df_test_expect['x2_福建省'].tolist(),
+                             df_test_encode['x2_福建省'].tolist())
 
     def test_list_transformer(self):
         df_train = pd.DataFrame({
@@ -233,7 +233,7 @@ class TestTransformer(unittest.TestCase):
         })
 
         transformer = didtool.ListTransformer()
-        transformer.fit(df_train, columns=['x1', 'x2'])
+        transformer.fit(df_train)
         df_train_encode = transformer.transform(df_train)
         df_train_expect = pd.DataFrame([
             {'x1_1': 1, 'x1_2': 1, 'x1_5': 1, 'x2_a': 1, 'x2_c': 1},
@@ -270,7 +270,7 @@ class TestTransformer(unittest.TestCase):
         })
 
         transformer = didtool.ListTransformer()
-        transformer.fit(df_train, columns=['x1', 'x2'], sub_sep=':')
+        transformer.fit(df_train, sub_sep=':')
         df_train_encode = transformer.transform(df_train)
         df_train_expect = pd.DataFrame([
             {'x1_1': 0.9, 'x1_2': 0.85, 'x1_4': 0.8, 'x2_a': 0.11, 'x2_c': 0.22},

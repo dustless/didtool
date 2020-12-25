@@ -295,8 +295,7 @@ class CategoryTransformer(TransformerMixin):
         self.df_encoder = pd.DataFrame()
         self.nan_value = 'nan'
 
-    def fit(self, x, columns: Union[list, str], max_bins=None,
-            min_coverage=None):
+    def fit(self, x, max_bins=None, min_coverage=None):
         """
         fit category transformer
 
@@ -304,9 +303,6 @@ class CategoryTransformer(TransformerMixin):
         ----------
         x: pd.DataFrame
             data to fit transformer
-
-        columns: list or str
-            cloumns to be encoded
 
         max_bins: None or int
             max category of every encoded column
@@ -320,10 +316,7 @@ class CategoryTransformer(TransformerMixin):
             when max_bins and min_coverage are both None,
             numbers of category no limit
         """
-        if isinstance(columns, str):
-            columns = [columns]
-
-        for col in columns:
+        for col in x.columns:
             has_nan = x[col].isnull().any()
 
             df_tmp = pd.DataFrame(x[col].value_counts())
@@ -334,14 +327,14 @@ class CategoryTransformer(TransformerMixin):
                 n_bins = min(n_bins, max_bins)
             elif min_coverage:
                 cnt = 0
-                for i, cnt_tmp in enumerate(df_tmp.cnt.to_list()):
+                for i, cnt_tmp in enumerate(df_tmp.cnt.tolist()):
                     cnt += cnt_tmp
                     if cnt >= x.shape[0] * min_coverage:
                         n_bins = i + 1
                         break
             map_encoder = {
                 key: val + 1 for val, key in enumerate(
-                    df_tmp.iloc[:n_bins][col].to_list())
+                    df_tmp.iloc[:n_bins][col].tolist())
             }
             map_encoder.update({'others': n_bins})
 
@@ -407,8 +400,7 @@ class OneHotTransformer(TransformerMixin):
         self._features_length = 0
         self.nan_value = 'nan'
 
-    def fit(self, x, columns: Union[list, str], max_bins=None,
-            min_coverage=None):
+    def fit(self, x, max_bins=None, min_coverage=None):
         """
         fit oneHot transformer
 
@@ -432,13 +424,7 @@ class OneHotTransformer(TransformerMixin):
             when max_bins and min_coverage are both None,
             numbers of category no limit
         """
-        if isinstance(columns, str):
-            columns = [columns]
-        for col in columns:
-            if col not in x.columns:
-                raise Exception("%s not in x" % col)
-
-        for col in columns:
+        for col in x.columns:
             has_nan = x[col].isnull().any()
 
             df_tmp = pd.DataFrame(x[col].value_counts())
@@ -449,12 +435,12 @@ class OneHotTransformer(TransformerMixin):
                 n_bins = min(n_bins, max_bins)
             elif min_coverage:
                 cnt = 0
-                for i, cnt_tmp in enumerate(df_tmp.cnt.to_list()):
+                for i, cnt_tmp in enumerate(df_tmp.cnt.tolist()):
                     cnt += cnt_tmp
                     if cnt >= x.shape[0] * min_coverage:
                         n_bins = i + 1
                         break
-            col_vals = df_tmp.iloc[:n_bins][col].to_list() + ['others']
+            col_vals = df_tmp.iloc[:n_bins][col].tolist() + ['others']
 
             # encode np.nan if this column has np.nan
             if has_nan:
@@ -537,8 +523,7 @@ class ListTransformer(TransformerMixin):
         self.sub_sep = None
         self.dtype = np.int8
 
-    def fit(self, x, columns: Union[list, str], sep=',', sub_sep=None,
-            max_bins=None):
+    def fit(self, x, sep=',', sub_sep=None, max_bins=None):
         """
         fit Multi-Hot Transformer
 
@@ -546,9 +531,6 @@ class ListTransformer(TransformerMixin):
         ----------
         x: pd.DataFrame
             data to fit transformer
-
-        columns: list or str
-            cloumns to be encoded
 
         sep : str
             separator of list value
@@ -559,9 +541,7 @@ class ListTransformer(TransformerMixin):
         max_bins: None or int
             max number of encoding bins
         """
-        if isinstance(columns, str):
-            columns = [columns]
-        for col in columns:
+        for col in x.columns:
             if col not in x.columns:
                 raise Exception("%s not in x" % col)
 
@@ -573,7 +553,7 @@ class ListTransformer(TransformerMixin):
             self.dtype = np.float64
             self.nan_value = "{0}{1}{2}".format('nan', self.sub_sep, 1)
 
-        for col in columns:
+        for col in x.columns:
             x_col = x[col].fillna(self.nan_value).tolist()
 
             feat_counter = Counter()
