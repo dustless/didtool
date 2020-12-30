@@ -72,7 +72,7 @@ class TestModel(unittest.TestCase):
                              model_params=model_params, n_fold=n_fold)
 
         # test train
-        m.train(save_learn_curve=False)
+        m.train(save_learn_curve=False, eval_metric='auc')
 
         # test evaluate
         result = m.evaluate()

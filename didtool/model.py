@@ -547,10 +547,10 @@ class LGBModelStacking:
             print("\n**** model_%d ****" % k)
             print('train AUC: %.5f' % roc_auc_score(
                 train_res[train_res[self.group_col] != k][self.target],
-                train_res[train_res[self.group_col] != k]['prob']))
+                train_res[train_res[self.group_col] != k]['prob_%d' % k]))
             print('val AUC: %.5f' % roc_auc_score(
                 train_res[train_res[self.group_col] == k][self.target],
-                train_res[train_res[self.group_col] == k]['prob']))
+                train_res[train_res[self.group_col] == k]['prob_%d' % k]))
 
         print("\n**** model_stacking ****")
         print('total train AUC: %.5f' % roc_auc_score(
