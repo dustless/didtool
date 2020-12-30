@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="didtool",
-    version="0.0.6",
+    version="0.0.7",
     author="dustless",
     author_email="wuchenghui927@126.com",
     description="Tool set for feature engineering & modeling",
