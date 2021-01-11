@@ -36,7 +36,8 @@ def split_data(data, train_mask, val_mask, group_col='group'):
     return data
 
 
-def split_data_random(data, train_size=0.6, val_size=0.2, group_col='group'):
+def split_data_random(data, train_size=0.6, val_size=0.2, group_col='group',
+                      random_state=None):
     """
     Split data set into train/val/test part randomly
 
@@ -59,6 +60,12 @@ def split_data_random(data, train_size=0.6, val_size=0.2, group_col='group'):
     group_col : str(default='group')
         group column name
 
+    random_state : int, RandomState instance or None, optional (default=None)
+        If int, random_state is the seed used by the random number generator;
+        If RandomState instance, random_state is the random number generator;
+        If None, the random number generator is the RandomState instance used
+        by `np.random`.
+
     Returns
     --------
     data : DataFrame
@@ -71,12 +78,13 @@ def split_data_random(data, train_size=0.6, val_size=0.2, group_col='group'):
     if train_size + val_size > 1.0:
         raise Exception("train_size + val_size should not be greater than 1.0")
 
-    train, val = train_test_split(data, train_size=train_size, random_state=1)
+    train, val = train_test_split(data, train_size=train_size,
+                                  random_state=random_state)
     # if train_size + val_size < 1.0,
     # then test_size = 1.0 - train_size - val_size
     if train_size + val_size < 1.0:
         val, _ = train_test_split(val, train_size=val_size / (1 - train_size),
-                                  random_state=1)
+                                  random_state=random_state)
     train_mask = np.zeros(data.shape[0], dtype=bool)
     train_mask[train.index] = True
     val_mask = np.zeros(data.shape[0], dtype=bool)

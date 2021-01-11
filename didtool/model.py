@@ -585,7 +585,6 @@ class LGBModelStacking:
                              with_repr=False)
 
             if export_pkl:
-                from sklearn.externals import joblib
                 pkl_file = "%s_%d_%s.pkl" % (self.model_name, i, date_str)
                 joblib.dump(self.models[i],
                             os.path.join(self.out_path, pkl_file))
