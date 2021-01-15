@@ -75,7 +75,7 @@ def _iv_discrete(x, y):
     iv : IV of feature x
     """
     iv_value = 0
-    for v in np.unique(x):
+    for v in set(x):
         prob1, prob0 = probability(y, group_mask=(x == v))
         iv_value += (prob1 - prob0) * woe(prob1, prob0)
     return iv_value
@@ -115,7 +115,7 @@ def iv(x, y, is_continuous=True, **kwargs):
     -------
     (name, iv) : IV of feature x
     """
-    if is_continuous or len(np.unique(x)) / len(x) > 0.5:
+    if is_continuous or len(set(x)) / len(x) > 0.5:
         return _iv_continuous(x, y, **kwargs)
     return _iv_discrete(x, y)
 

@@ -85,9 +85,9 @@ class SingleWOETransformer(TransformerMixin):
             for i in range(len(bins) - 1):
                 woe_bins.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
         else:
-            woe_bins = ['[%s]' % v for v in np.sort(np.unique(x))]
+            woe_bins = ['[%s]' % v for v in np.sort(set(x))]
 
-        value = np.sort(np.unique(x))
+        value = np.sort(set(x))
         num_bins = len(value)
         group_count = np.zeros(num_bins, dtype=np.int64)
         group_rate = np.zeros(num_bins)
