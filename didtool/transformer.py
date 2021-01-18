@@ -336,6 +336,7 @@ class CategoryTransformer(TransformerMixin):
                 key: val + 1 for val, key in enumerate(
                     df_tmp.iloc[:n_bins][col].tolist())
             }
+            # 为什么others编码和最后一个分箱编码相同？主要是为了避免others不存在的情况
             map_encoder.update({'others': n_bins})
 
             # encode np.nan if this column has np.nan
@@ -347,7 +348,7 @@ class CategoryTransformer(TransformerMixin):
             df_encoder.columns = [col, col + '_encoder']
             self.df_encoder = pd.concat([self.df_encoder, df_encoder],
                                         axis=1)
-            self.df_encoder.replace([self.nan_value], np.nan, inplace=True)
+            # self.df_encoder.replace([self.nan_value], np.nan, inplace=True)
             self.map_encoder.update({col: map_encoder})
 
         return self
@@ -408,9 +409,6 @@ class OneHotTransformer(TransformerMixin):
         ----------
         x: pd.DataFrame
             data to fit transformer
-
-        columns: list or str
-            cloumns to be encoded
 
         max_bins: None or int
             max category of every encoded column
@@ -490,7 +488,7 @@ class OneHotTransformer(TransformerMixin):
 
 class ListTransformer(TransformerMixin):
     """
-    Multi-Hot Transformer
+    List Transformer
     Expand list values to columns
 
     example:
@@ -502,26 +500,17 @@ class ListTransformer(TransformerMixin):
     map_encoder : dict of encoder
         After fitted, `map_encoder` used to encode oot data
 
-    nan_value : 'nan'
-        The default fill value for empty values
-        If `sub_sep` specified, replace nan value as "nan{sub_sep}1"
-
     sep : str
         separator of list value
 
     sub_sep : str, default None
         sub-separator of list value
-
-    dtype: data-type of output data
-        default np.int8 if `sub_sep` not set, otherwise np.float64
     """
 
-    def __init__(self):
+    def __init__(self, sep=',', sub_sep=None):
         self.map_encoder = {}
-        self.nan_value = 'nan'
-        self.sep = ','
-        self.sub_sep = None
-        self.dtype = np.int8
+        self.sep = sep
+        self.sub_sep = sub_sep
 
     def fit(self, x, sep=',', sub_sep=None, max_bins=None):
         """
@@ -547,14 +536,9 @@ class ListTransformer(TransformerMixin):
 
         self.sep = sep
         self.sub_sep = sub_sep
-        # 如果指定了二级分割符，那么默认的输出数据类型改成np.float64
-        # 并且将nan_value做下改动，以便配合按二级分割符分割字符串
-        if self.sub_sep:
-            self.dtype = np.float64
-            self.nan_value = "{0}{1}{2}".format('nan', self.sub_sep, 1)
 
         for col in x.columns:
-            x_col = x[col].fillna(self.nan_value).tolist()
+            x_col = x[col].dropna().tolist()
 
             feat_counter = Counter()
             for item_list_str in x_col:
@@ -572,11 +556,12 @@ class ListTransformer(TransformerMixin):
             else:
                 feat_names = feat_counter.keys()
 
+            feat_names = sorted(feat_names)
             self.map_encoder.update({col: feat_names})
 
         return self
 
-    def transform(self, x, dtype=None) -> pd.DataFrame:
+    def transform(self, x) -> pd.DataFrame:
         """
         transform function for all columns needed oneHot encode
 
@@ -585,14 +570,10 @@ class ListTransformer(TransformerMixin):
         x: pd.DataFrame
             data to transform
 
-        dtype : data-type, optional
-            The desired data-type for output data
-
         Returns
         -------
         pd.DataFrame with list encoded
         """
-        x = x.fillna(self.nan_value)
         for key in self.map_encoder:
             if key not in x.columns:
                 raise Exception('%s not in x' % key)
@@ -601,23 +582,26 @@ class ListTransformer(TransformerMixin):
         for i in range(x.shape[0]):
             row_res = {}
             for col in self.map_encoder:
+                if pd.isna(x.loc[i, col]):
+                    continue
                 item_list = x.loc[i, col].split(self.sep)
                 if self.sub_sep:
-                    row_res.update({
-                        "%s_%s" % (col, item.split(self.sub_sep)[0]):
-                            item.split(self.sub_sep)[1]
+                    item_dict = {
+                        item.split(self.sub_sep)[0]: item.split(self.sub_sep)[1]
                         for item in item_list
-                        if item.split(self.sub_sep)[0] in self.map_encoder[col]
-                    })
+                    }
+                    for feat in self.map_encoder[col]:
+                        row_res.update({
+                            "%s_%s" % (col, feat): float(item_dict.get(feat, 0))
+                        })
                 else:
-                    row_res.update({
-                        "%s_%s" % (col, item): 1 for item in item_list
-                        if item in self.map_encoder[col]
-                    })
+                    for feat in self.map_encoder[col]:
+                        row_res.update({
+                            "%s_%s" % (col, feat): int(feat in item_list)
+                        })
             res.append(row_res)
 
         feat_names = ["%s_%s" % (c, f) for c in self.map_encoder
                       for f in self.map_encoder[c]]
-        res_df = pd.DataFrame(res, columns=sorted(feat_names)). \
-            fillna(0).astype(dtype or self.dtype)
+        res_df = pd.DataFrame(res, columns=sorted(feat_names))
         return res_df

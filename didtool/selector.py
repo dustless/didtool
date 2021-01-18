@@ -120,7 +120,7 @@ class Selector:
         self.drop_cols.extend(to_drop)
         self.data = self.data.drop(columns=to_drop)
 
-        print('%d features with iv less than %0.2f.\n' %
+        print('%d features with iv less than %0.3f.\n' %
               (len(to_drop), iv_threshold))
         return self
 
