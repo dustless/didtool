@@ -92,7 +92,7 @@ class LGBModelSingle:
         self.model = None
         self.pipeline = None
 
-        dtypes = [(feat, self.data[feat].dtype) for feat in self.feature_names]
+        dtypes = self.data[self.feature_names].dtypes
         mapper, cat_features = \
             make_lightgbm_column_transformer(dtypes, missing_value_aware=True)
         self._model_params = {"categorical_feature": cat_features}
@@ -410,8 +410,7 @@ class LGBModelStacking:
         self.models = []
         self.pipelines = []
         for _ in range(self.n_fold):
-            dtypes = [(feat, self.data[feat].dtype) for feat in
-                      self.feature_names]
+            dtypes = self.data[self.feature_names].dtypes
             mapper, _ = \
                 make_lightgbm_column_transformer(dtypes,
                                                  missing_value_aware=True)

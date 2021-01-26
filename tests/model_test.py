@@ -90,7 +90,7 @@ class TestModel(unittest.TestCase):
         # test export
         m.export()
 
-    def test_run_model_cv(self):
+    def test_optimize_model_param(self):
         # log config
         log_file_dir = Path("./test_out/bayes_parameter_search.txt")
         if log_file_dir.exists():
