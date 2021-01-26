@@ -1,5 +1,5 @@
 # coding: utf-8
-__version__ = '0.0.10'
+__version__ = '0.0.11'
 
 from .cut import cut, quantile_cut, step_cut, dt_cut, lgb_cut, chi_square_cut, \
     cut_with_bins
@@ -14,3 +14,4 @@ from .transformer import SingleWOETransformer, WOETransformer, \
 from .selector import Selector
 from .scorecard import ScoreCardTransformer
 from .logger import Logger
+from .encoder import WOEEncoder

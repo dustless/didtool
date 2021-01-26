@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold, cross_val_score
 from bayes_opt import BayesianOptimization
 
+from .utils import is_categorical
 
 class LGBModelSingle:
     """
@@ -91,10 +92,10 @@ class LGBModelSingle:
         self.model = None
         self.pipeline = None
 
-        dtypes = {feat: self.data[feat].dtype for feat in self.feature_names}
-        mapper, _ = make_lightgbm_column_transformer(dtypes,
-                                                     missing_value_aware=True)
-        self._model_params = {}
+        dtypes = [(feat, self.data[feat].dtype) for feat in self.feature_names]
+        mapper, cat_features = \
+            make_lightgbm_column_transformer(dtypes, missing_value_aware=True)
+        self._model_params = {"categorical_feature": cat_features}
         self._mapper = mapper
         self.update_model_params(model_params)
 
@@ -358,8 +359,6 @@ class LGBModelStacking:
     _model_params : dict
         params for LGBMClassifier
         (https://lightgbm.readthedocs.io/en/latest/Parameters.html)
-
-    _mapper : object of ColumnTransformer
     """
 
     def __init__(self, data, feature_names, target='target', group_col='group',
@@ -394,11 +393,11 @@ class LGBModelStacking:
         self.pipelines = None
         self.importance_dfs = None
 
-        dtypes = {feat: self.data[feat].dtype for feat in self.feature_names}
-        mapper, _ = make_lightgbm_column_transformer(dtypes,
-                                                     missing_value_aware=True)
-        self._model_params = {}
-        self._mapper = mapper
+        cat_features = []
+        for i, column in enumerate(self.feature_names):
+            if is_categorical(self.data[column]):
+                cat_features.append(i)
+        self._model_params = {"categorical_feature": cat_features}
         self.update_model_params(model_params)
 
     def update_model_params(self, model_params):
@@ -411,8 +410,14 @@ class LGBModelStacking:
         self.models = []
         self.pipelines = []
         for _ in range(self.n_fold):
+            dtypes = [(feat, self.data[feat].dtype) for feat in
+                      self.feature_names]
+            mapper, _ = \
+                make_lightgbm_column_transformer(dtypes,
+                                                 missing_value_aware=True)
+
             model = lgb.LGBMClassifier(**self._model_params)
-            pipeline = PMMLPipeline([("mapper", self._mapper),
+            pipeline = PMMLPipeline([("mapper", mapper),
                                      ("model", model)])
             self.models.append(model)
             self.pipelines.append(pipeline)
