@@ -1,6 +1,9 @@
 import os
 import unittest
+import joblib
+import time
 import pandas as pd
+import numpy as np
 import sys
 
 from didtool.model import LGBModelSingle, LGBModelStacking
@@ -19,7 +22,7 @@ class TestModel(unittest.TestCase):
 
     def test_model_single(self):
         df = pd.read_csv('samples.csv')
-        df['v5'] = df['v5'].astype('category')
+        df['v5'] = df['v5'].apply(lambda x: (x + 1) * 2).astype('category')
 
         features = [col for col in df.columns.values if col != 'target']
         # split_data
@@ -51,6 +54,13 @@ class TestModel(unittest.TestCase):
 
         # test export
         m.export(export_pkl=True)
+
+        date_str = time.strftime("%Y%m%d")
+        m_load = joblib.load('./test_out/model_%s.pkl' % date_str)
+        data['v5'] = data['v5'].astype(int)
+        new_res = np.around(m_load.predict_proba(data[features][:10])[:, 1], 6)
+        expect_res = round(result['prob'], 6)[:10].tolist()
+        self.assertListEqual(list(new_res), expect_res)
 
     def test_model_stacking(self):
         df = pd.read_csv('samples.csv')

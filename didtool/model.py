@@ -5,7 +5,7 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.metrics.ranking import roc_auc_score
+from sklearn.metrics import roc_auc_score
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
 import matplotlib.pyplot as plt
@@ -13,6 +13,7 @@ from sklearn.model_selection import KFold, cross_val_score
 from bayes_opt import BayesianOptimization
 
 from .utils import is_categorical
+
 
 class LGBModelSingle:
     """
@@ -248,7 +249,7 @@ class LGBModelSingle:
 
         if export_pkl:
             pkl_file = "%s_%s.pkl" % (self.model_name, date_str)
-            joblib.dump(self.model, os.path.join(self.out_path, pkl_file))
+            joblib.dump(self.pipeline, os.path.join(self.out_path, pkl_file))
 
     def optimize_model_param(self, searching_space, n_iter=10):
         """
@@ -590,5 +591,5 @@ class LGBModelStacking:
 
             if export_pkl:
                 pkl_file = "%s_%d_%s.pkl" % (self.model_name, i, date_str)
-                joblib.dump(self.models[i],
+                joblib.dump(self.pipelines[i],
                             os.path.join(self.out_path, pkl_file))
