@@ -13,7 +13,7 @@ class TestStats(unittest.TestCase):
                    10, 10, 10, 11, 11, 11, np.nan, np.nan, np.nan],
             "x2": [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4,
                    5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9,
-                   10, 10, 10, 11, 11, 11, -1, -1, -1],
+                   10, 10, 10, 11, 11, 11, np.nan, np.nan, np.nan],
             "target": [0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1,
                        0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1,
                        0, 0, 0, 0, 0, 1, 0, 1, 1]
@@ -32,7 +32,7 @@ class TestStats(unittest.TestCase):
         df = pd.read_csv('samples.csv')
         df['v5'] = df['v5'].astype('category')
         df['month'] = df.index % 6
-        df['month'] = df['month'].apply(lambda x: "m%02d" % (x+1))
+        df['month'] = df['month'].apply(lambda x: "m%02d" % (x + 1))
 
         features = ['v%d' % i for i in range(1, 21)]
         psi_df = didtool.psi_all(df, features, group_col='month')

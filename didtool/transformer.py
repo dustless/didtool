@@ -1,3 +1,4 @@
+# coding: utf-8
 from multiprocessing import Pool, cpu_count
 from collections import Counter
 
@@ -5,9 +6,8 @@ import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin
 import matplotlib.pyplot as plt
-from typing import Union
 
-from .utils import is_categorical
+from .utils import is_categorical, handle_categorical_value
 from .cut import cut, DEFAULT_BINS, cut_with_bins
 from .metric import woe, probability
 
@@ -85,6 +85,7 @@ class SingleWOETransformer(TransformerMixin):
             for i in range(len(bins) - 1):
                 woe_bins.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
         else:
+            x = handle_categorical_value(x)
             woe_bins = ['[%s]' % v for v in np.sort(np.unique(x))]
 
         value = np.sort(np.unique(x))
@@ -140,6 +141,8 @@ class SingleWOETransformer(TransformerMixin):
         """
         if self.is_continuous:
             x = cut_with_bins(x, self.bins)
+        else:
+            x = handle_categorical_value(x)
 
         res = np.zeros(len(x))
 

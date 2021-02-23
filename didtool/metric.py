@@ -1,3 +1,4 @@
+# coding: utf-8
 import os
 
 import numpy as np
@@ -7,6 +8,7 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, \
     average_precision_score
 import seaborn as sns
 
+from didtool.utils import handle_categorical_value
 from .cut import DEFAULT_BINS, cut, step_cut, cut_with_bins
 
 sns.set(rc={"figure.figsize": (10, 8)})
@@ -117,7 +119,8 @@ def iv(x, y, is_continuous=True, **kwargs):
     """
     if is_continuous or len(set(x)) / len(x) > 0.5:
         return _iv_continuous(x, y, **kwargs)
-    return _iv_discrete(x, y)
+
+    return _iv_discrete(handle_categorical_value(x), y)
 
 
 def _psi_discrete(expected_array, actual_array, detail=False):
@@ -137,7 +140,8 @@ def _psi_discrete(expected_array, actual_array, detail=False):
     psi_df : DataFrame, only returned when `detail` is True
         detailed distribution of expect and actual arrays
     """
-    groups = np.sort(np.union1d(expected_array.unique(), actual_array.unique()))
+    groups = np.sort(np.union1d(np.unique(expected_array),
+                                np.unique(actual_array)))
 
     def _get_group_cnt(arr, groups):
         group_cnt = []
@@ -248,6 +252,8 @@ def psi(expected_array, actual_array, n_bins=DEFAULT_BINS, plot=False,
         psi_value, df = _psi_continuous(expected_array, actual_array, n_bins,
                                         detail=True)
     else:
+        expected_array = handle_categorical_value(expected_array)
+        actual_array = handle_categorical_value(actual_array)
         psi_value, df = _psi_discrete(expected_array, actual_array, detail=True)
 
     if plot:

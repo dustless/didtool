@@ -1,10 +1,11 @@
+# coding: utf-8
 from multiprocessing import Pool, cpu_count
 
 import pandas as pd
 import numpy as np
 
 from .metric import iv, psi
-from .utils import is_categorical
+from .utils import is_categorical, handle_categorical_value
 
 
 def _iv_with_name(x, y, name='feature', **kwargs):
@@ -21,6 +22,9 @@ def _iv_with_name(x, y, name='feature', **kwargs):
     [name, iv] : feature name and IV of feature x
     """
     is_continuous = not is_categorical(x)
+    if not is_continuous:
+        x = handle_categorical_value(x)
+
     iv_value = iv(x, y, is_continuous, **kwargs)
     return [name, iv_value]
 

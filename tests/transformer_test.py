@@ -38,18 +38,22 @@ class TestTransformer(unittest.TestCase):
         # transformer.plot_woe()
 
         # fit another categorical value
-        x = df['v5'].astype('category')
+        x = df['v5'].apply(lambda a: (a+1)*2).astype('category')
+        x[:100] = np.nan
         transformer.fit(x, y, 'v5')
         self.assertEqual(transformer.var_name, 'v5')
         self.assertEqual(transformer.is_continuous, False)
         self.assertListEqual(transformer.bins, [])
         self.assertDictEqual(transformer.woe_map,
-                             {0: -0.21690835519242824, 1: 0.48454658205632983})
+                             {'2': -0.2511705085616937,
+                              '4': 0.5387442239332461,
+                              'nan': 0.04152558412767761})
 
-        res = transformer.transform(np.array([0, 1, -1]))
-        self.assertAlmostEqual(res[0], -0.216908, 6)
-        self.assertAlmostEqual(res[1], 0.484547, 6)
+        res = transformer.transform(np.array([2, 4, -1, np.nan]))
+        self.assertAlmostEqual(res[0], -0.251171, 6)
+        self.assertAlmostEqual(res[1], 0.538744, 6)
         self.assertAlmostEqual(res[2], 0)
+        self.assertAlmostEqual(res[3], 0.041526, 6)
 
     def test_woe_transformer(self):
         df = pd.read_csv('samples.csv')

@@ -21,7 +21,7 @@ class TestMetric(unittest.TestCase):
         iv4 = didtool.iv(x, y, True, cut_method='quantile')
         iv5 = didtool.iv(x, y, True, cut_method='lgb')
 
-        self.assertAlmostEqual(iv1, 1.334705486550453)
+        self.assertAlmostEqual(iv1, 1.3981884852309596)
         self.assertAlmostEqual(iv2, 1.4057157347824798)
         self.assertAlmostEqual(iv3, 1.4974950271838132)
         self.assertAlmostEqual(iv4, 1.3755617026195848)

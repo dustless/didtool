@@ -1,3 +1,4 @@
+# coding: utf-8
 import pandas as pd
 import numpy as np
 
@@ -38,6 +39,32 @@ def is_categorical(series):
     """
     # return pd.core.dtypes.api.is_categorical_dtype(series)
     return pd.api.types.is_categorical_dtype(series)
+
+
+def handle_categorical_value(arr):
+    """
+    handel categorical value
+    convert as str type
+
+    Parameters
+    ----------
+    arr: array-like
+        The array-like to check.
+
+    Returns
+    -------
+    array of strings
+        convert np.nan to string 'nan'.
+    """
+
+    def _convert_to_str(s):
+        try:
+            return str(int(s))
+        except:
+            return str(s)
+
+    res = [_convert_to_str(s) for s in arr]
+    return np.array(res)
 
 
 def fillna(data, by=-1):
