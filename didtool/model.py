@@ -6,13 +6,16 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 import joblib
+from sklearn.compose import ColumnTransformer
 from sklearn.metrics import roc_auc_score
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
+from sklearn2pmml.preprocessing import PMMLLabelEncoder
 from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold, cross_val_score
 from bayes_opt import BayesianOptimization
 
+from .encoder import WOEEncoder
 from .utils import is_categorical
 
 
@@ -63,11 +66,12 @@ class LGBModelSingle:
         params for LGBMClassifier
         (https://lightgbm.readthedocs.io/en/latest/Parameters.html)
 
-    _mapper : object of ColumnTransformer
+    mapper : object of ColumnTransformer
     """
 
     def __init__(self, data, feature_names, target='target', group_col='group',
-                 out_path='out', model_params=None, model_name='model'):
+                 out_path='out', model_params=None, model_name='model',
+                 woe_features=None):
         # check data columns
         if target not in data:
             raise Exception("column '%s' is missing from data" % target)
@@ -82,6 +86,7 @@ class LGBModelSingle:
         self.target = target
         self.model_name = model_name
         self.group_col = group_col
+        self.woe_features = woe_features or []
 
         self.out_path = os.path.abspath(out_path)
         if not os.path.exists(self.out_path):
@@ -94,11 +99,24 @@ class LGBModelSingle:
         self.model = None
         self.pipeline = None
 
-        dtypes = self.data[self.feature_names].dtypes
-        mapper, cat_features = \
-            make_lightgbm_column_transformer(dtypes, missing_value_aware=True)
+        transformers = list()
+        cat_features = list()
+        i = 0
+        for feature in feature_names:
+            # 如果特征需要进行WOE编码，则需要使用WOEEncoder转换
+            if feature in self.woe_features:
+                transformers.append([feature, WOEEncoder(), feature])
+            # 普通类别型特征，使用PMMLLabelEncoder进行编码转换
+            elif is_categorical(self.data[feature]):
+                transformers.append(
+                    (feature, PMMLLabelEncoder(missing_values=-1), [feature]))
+                cat_features.append(i)
+            else:
+                transformers.append((feature, "passthrough", [feature]))
+            i += 1
+
         self._model_params = {"categorical_feature": cat_features}
-        self._mapper = mapper
+        self.mapper = ColumnTransformer(transformers)
         self.update_model_params(model_params)
 
     def update_model_params(self, model_params):
@@ -110,7 +128,7 @@ class LGBModelSingle:
 
         # create new model by updated model params
         self.model = lgb.LGBMClassifier(**self._model_params)
-        self.pipeline = PMMLPipeline([("mapper", self._mapper),
+        self.pipeline = PMMLPipeline([("mapper", self.mapper),
                                       ("model", self.model)])
 
     def train(self, early_stopping_rounds=20, eval_metric="binary_logloss",
@@ -137,16 +155,27 @@ class LGBModelSingle:
         train_data = self.data[self.data[self.group_col] == 0]
         val_data = self.data[self.data[self.group_col] == 1]
 
+        # step0: fit mapper
+        self.pipeline[0].fit(train_data[self.feature_names],
+                             train_data[self.target])
+
+        # step1: fit model
+        trans_train_data = self.pipeline[0].transform(
+            train_data[self.feature_names])
+        trans_val_data = self.pipeline[0].transform(
+            val_data[self.feature_names])
         eval_set = [
-            (train_data[self.feature_names], train_data[self.target]),
-            (val_data[self.feature_names], val_data[self.target])
+            (trans_train_data, train_data[self.target]),
+            (trans_val_data, val_data[self.target])
         ]
-        self.pipeline.fit(train_data[self.feature_names],
-                          train_data[self.target],
-                          model__early_stopping_rounds=early_stopping_rounds,
-                          model__eval_set=eval_set,
-                          model__eval_metric=eval_metric,
-                          model__verbose=verbose)
+        self.pipeline[-1].fit(
+            trans_train_data,
+            train_data[self.target],
+            early_stopping_rounds=early_stopping_rounds,
+            eval_set=eval_set,
+            eval_metric=eval_metric,
+            verbose=verbose
+        )
 
         imp_score = self.model.feature_importances_
         self.importance_df = pd.DataFrame({
@@ -156,7 +185,7 @@ class LGBModelSingle:
 
         if save_learn_curve:
             result = self.model.evals_result_
-            train_res = result.get("valid_0")
+            train_res = result.get("training")
             val_res = result.get("valid_1")
             epochs = len(train_res["binary_logloss"])
 
@@ -183,7 +212,7 @@ class LGBModelSingle:
             then append prediction columns.
         """
         result = self.data.drop(self.feature_names, axis=1)
-        result['prob'] = self.model.predict_proba(
+        result['prob'] = self.pipeline.predict_proba(
             self.data[self.feature_names])[:, -1]
 
         print('train AUC: %.5f' % roc_auc_score(
@@ -212,6 +241,15 @@ class LGBModelSingle:
         feature_file.writelines([col + '\n' for col in used_cols])
         feature_file.close()
 
+    def _save_feature_list(self):
+        """
+        save all features of input as a txt file
+        """
+        dtypes = self.data[self.feature_names].dtypes
+        with open(os.path.join(self.out_path, 'feature_list.txt'), 'w') as f:
+            for item in dtypes.items():
+                f.writelines("%s\t%s\n" % (item[0], item[1]))
+
     def save_feature_importance(self, plot=True):
         """
         Save feature importance
@@ -227,7 +265,7 @@ class LGBModelSingle:
             plt.xlabel('Feature Importance')
             plt.savefig(os.path.join(self.out_path, 'feature_importance.png'))
 
-    def export(self, export_pmml=True, export_pkl=False):
+    def export(self, export_pmml=False, export_pkl=True):
         """
         Export trained model
 
@@ -240,10 +278,15 @@ class LGBModelSingle:
         """
         # save used features
         self._save_used_features()
+        self._save_feature_list()
 
         date_str = time.strftime("%Y%m%d")
 
         if export_pmml:
+            # 如果有特征进行了WOE编码转换，则不再支持导出pmml文件
+            if self.woe_features:
+                raise Exception("cannot export pmml file if you specify "
+                                "`woe_features`")
             pmml_file = "%s_%s.pmml" % (self.model_name, date_str)
             sklearn2pmml(self.pipeline, os.path.join(self.out_path, pmml_file),
                          with_repr=False)
@@ -296,9 +339,14 @@ class LGBModelSingle:
             return val
 
         # init parameters
-        tran_data = self.data[self.data[self.group_col] == 0]
-        x_train = tran_data[self.feature_names]
-        y_train = tran_data[self.target]
+        train_data = self.data[self.data[self.group_col] == 0]
+
+        # fit mapper first
+        self.pipeline[0].fit(train_data[self.feature_names],
+                             train_data[self.target])
+
+        x_train = self.pipeline[0].transform(train_data[self.feature_names])
+        y_train = train_data[self.target]
 
         model_bo = BayesianOptimization(
             _model_cv,
@@ -365,7 +413,7 @@ class LGBModelStacking:
 
     def __init__(self, data, feature_names, target='target', group_col='group',
                  out_path='out', model_params=None, n_fold=5,
-                 model_name='model'):
+                 model_name='model', woe_features=None):
         # check data columns
         if target not in data:
             raise Exception("column '%s' is missing from data" % target)
@@ -385,6 +433,7 @@ class LGBModelStacking:
         self.n_fold = n_fold
         self.model_name = model_name
         self.feature_names = feature_names
+        self.woe_features = woe_features or []
 
         self.out_path = os.path.abspath(out_path)
         if not os.path.exists(self.out_path):
@@ -397,7 +446,8 @@ class LGBModelStacking:
 
         cat_features = []
         for i, column in enumerate(self.feature_names):
-            if is_categorical(self.data[column]):
+            if is_categorical(self.data[column]) and \
+                    column not in self.woe_features:
                 cat_features.append(i)
         self._model_params = {"categorical_feature": cat_features}
         self.update_model_params(model_params)
@@ -412,11 +462,22 @@ class LGBModelStacking:
         self.models = []
         self.pipelines = []
         for _ in range(self.n_fold):
-            dtypes = self.data[self.feature_names].dtypes
-            mapper, _ = \
-                make_lightgbm_column_transformer(dtypes,
-                                                 missing_value_aware=True)
+            transformers = list()
+            i = 0
+            for feature in self.feature_names:
+                # 如果特征需要进行WOE编码，则需要使用WOEEncoder转换
+                if feature in self.woe_features:
+                    transformers.append([feature, WOEEncoder(), feature])
+                # 普通类别型特征，使用PMMLLabelEncoder进行编码转换
+                elif is_categorical(self.data[feature]):
+                    transformers.append(
+                        (feature, PMMLLabelEncoder(missing_values=-1),
+                         [feature]))
+                else:
+                    transformers.append((feature, "passthrough", [feature]))
+                i += 1
 
+            mapper = ColumnTransformer(transformers)
             model = lgb.LGBMClassifier(**self._model_params)
             pipeline = PMMLPipeline([("mapper", mapper),
                                      ("model", model)])
@@ -449,13 +510,27 @@ class LGBModelStacking:
             train_k = self.data[(self.data[self.group_col] >= 0) &
                                 (self.data[self.group_col] != k)]
             val_k = self.data[self.data[self.group_col] == k]
-            eval_set = [(train_k[self.feature_names], train_k[self.target]),
-                        (val_k[self.feature_names], val_k[self.target])]
-            self.pipelines[k].fit(
-                train_k[self.feature_names], train_k[self.target],
-                model__early_stopping_rounds=early_stopping_rounds,
-                model__eval_set=eval_set, model__eval_metric=eval_metric,
-                model__verbose=verbose
+
+            # step0: fit mapper
+            self.pipelines[k][0].fit(train_k[self.feature_names],
+                                     train_k[self.target])
+
+            # step1: fit model
+            trans_train_k = self.pipelines[k][0].transform(
+                train_k[self.feature_names])
+            trans_val_k = self.pipelines[k][0].transform(
+                val_k[self.feature_names])
+            eval_set = [
+                (trans_train_k, train_k[self.target]),
+                (trans_val_k, val_k[self.target])
+            ]
+            self.pipelines[k][-1].fit(
+                trans_train_k,
+                train_k[self.target],
+                early_stopping_rounds=early_stopping_rounds,
+                eval_set=eval_set,
+                eval_metric=eval_metric,
+                verbose=verbose
             )
 
             # append feature importance of model k
@@ -469,7 +544,7 @@ class LGBModelStacking:
             # if needed, plot learn curve
             if save_learn_curve:
                 result = self.models[k].evals_result_
-                train_res = result.get("valid_0")
+                train_res = result.get("training")
                 val_res = result.get("valid_1")
                 epochs = len(train_res["binary_logloss"])
 
@@ -498,9 +573,18 @@ class LGBModelStacking:
 
             # save feature names used in model
             feature_file = open(
-                os.path.join(self.out_path, 'feature_%d.txt' % i), 'w')
+                os.path.join(self.out_path, 'used_feature_%d.txt' % i), 'w')
             feature_file.writelines([col + '\n' for col in used_cols])
             feature_file.close()
+
+    def _save_feature_list(self):
+        """
+        save all features of input as a txt file
+        """
+        dtypes = self.data[self.feature_names].dtypes
+        with open(os.path.join(self.out_path, 'feature_list.txt'), 'w') as f:
+            for item in dtypes.items():
+                f.writelines("%s\t%s\n" % (item[0], item[1]))
 
     def save_feature_importance(self, plot=True):
         """
@@ -535,7 +619,7 @@ class LGBModelStacking:
         """
         result = self.data.drop(self.feature_names, axis=1)
         for k in range(0, self.n_fold):
-            result["prob_%d" % k] = self.models[k].predict_proba(
+            result["prob_%d" % k] = self.pipelines[k].predict_proba(
                 self.data[self.feature_names])[:, -1]
 
         def _get_final_prob(probs, fold):
@@ -567,7 +651,7 @@ class LGBModelStacking:
             result[result[self.group_col] == -1]['prob']))
         return result
 
-    def export(self, export_pmml=True, export_pkl=False):
+    def export(self, export_pmml=False, export_pkl=True):
         """
         Export trained models
 
@@ -580,11 +664,16 @@ class LGBModelStacking:
         """
         # save used features
         self._save_used_features()
+        self._save_feature_list()
 
         date_str = time.strftime("%Y%m%d")
 
         for i in range(self.n_fold):
             if export_pmml:
+                # 如果有特征进行了WOE编码转换，则不再支持导出pmml文件
+                if self.woe_features:
+                    raise Exception("cannot export pmml file if you specify "
+                                    "`woe_features`")
                 pmml_file = "%s_%d_%s.pmml" % (self.model_name, i, date_str)
                 sklearn2pmml(self.pipelines[i],
                              os.path.join(self.out_path, pmml_file),

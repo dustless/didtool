@@ -1,4 +1,5 @@
 import os
+import random
 import unittest
 import joblib
 import time
@@ -43,7 +44,7 @@ class TestModel(unittest.TestCase):
 
         # test update model params
         m.update_model_params({'n_estimators': 100})
-        m.train(early_stopping_rounds=10, save_learn_curve=False)
+        m.train(early_stopping_rounds=10, save_learn_curve=True)
 
         # test evaluate
         result = m.evaluate()
@@ -53,11 +54,44 @@ class TestModel(unittest.TestCase):
         m.save_feature_importance()
 
         # test export
-        m.export(export_pkl=True)
+        m.export(export_pmml=True, export_pkl=True)
 
         date_str = time.strftime("%Y%m%d")
         m_load = joblib.load('./test_out/model_%s.pkl' % date_str)
         data['v5'] = data['v5'].astype(int)
+        new_res = np.around(m_load.predict_proba(data[features][:10])[:, 1], 6)
+        expect_res = round(result['prob'], 6)[:10].tolist()
+        self.assertListEqual(list(new_res), expect_res)
+
+    def test_model_single_with_woe_encoder(self):
+        df = pd.read_csv('samples.csv')
+        df['v5'] = df['v5'].apply(lambda x: (x + 1) * 2).astype('category')
+        df['v7'] = df['target'].apply(
+            lambda x: random.randint(0, 1) * x + random.randint(0, 2) * (1 - x))
+
+        features = [col for col in df.columns.values if col != 'target']
+        # split_data
+        data = split_data_random(df, 0.6, 0.2)
+
+        model_params = dict(
+            boosting_type='gbdt', n_estimators=100, learning_rate=0.05,
+            max_depth=5, feature_fraction=1, bagging_fraction=1, reg_alpha=1,
+            reg_lambda=1, min_data_in_leaf=20, random_state=27,
+            class_weight='balanced'
+        )
+        m = LGBModelSingle(data, features, 'target', out_path='./test_out',
+                           model_params=model_params, woe_features=['v7'])
+
+        # test train
+        m.train(early_stopping_rounds=10, eval_metric='auc',
+                save_learn_curve=True)
+        result = m.evaluate()
+        m.save_feature_importance()
+        m.export(export_pmml=False, export_pkl=True)
+
+        date_str = time.strftime("%Y%m%d")
+        m_load = joblib.load('./test_out/model_%s.pkl' % date_str)
+        data['v5'] = data['v5'].astype('category')
         new_res = np.around(m_load.predict_proba(data[features][:10])[:, 1], 6)
         expect_res = round(result['prob'], 6)[:10].tolist()
         self.assertListEqual(list(new_res), expect_res)
@@ -98,7 +132,42 @@ class TestModel(unittest.TestCase):
         m.save_feature_importance()
 
         # test export
-        m.export()
+        m.export(export_pmml=True, export_pkl=True)
+
+    def test_model_stacking_with_woe_encoder(self):
+        df = pd.read_csv('samples.csv')
+        df['v5'] = df['v5'].astype('category')
+        df['v7'] = df['target'].apply(
+            lambda x: random.randint(0, 1) * x + random.randint(0, 2) * (1 - x))
+
+        features = [col for col in df.columns.values if col != 'target']
+
+        n_fold = 5
+        # split_data
+        df = split_data_stacking(df, df.index >= 900, n_fold)
+
+        model_params = dict(
+            boosting_type='gbdt', n_estimators=10, learning_rate=0.05,
+            max_depth=5, feature_fraction=1, bagging_fraction=1, reg_alpha=1,
+            reg_lambda=1, min_data_in_leaf=10, random_state=27,
+            class_weight='balanced'
+        )
+        m = LGBModelStacking(df, features, 'target', out_path='./test_out',
+                             model_params=model_params, n_fold=n_fold,
+                             woe_features=['v7'])
+
+        # test train
+        m.train(save_learn_curve=False, eval_metric='auc')
+
+        # test evaluate
+        result = m.evaluate()
+        print(result)
+
+        # test save_feature_importance
+        m.save_feature_importance()
+
+        # test export
+        m.export(export_pmml=False)
 
     def test_optimize_model_param(self):
         # log config
