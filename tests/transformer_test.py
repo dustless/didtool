@@ -287,8 +287,8 @@ class TestTransformer(unittest.TestCase):
             'x2': ['a:0.66,c:0.77,d:0.88', 'b:0.99']
         })
 
-        transformer = didtool.ListTransformer()
-        transformer.fit(df_train, sub_sep=':')
+        transformer = didtool.ListTransformer(sub_sep=':')
+        transformer.fit(df_train)
         df_train_encode = transformer.transform(df_train)
         df_train_expect = pd.DataFrame({
             'x1_1': [0.9, 0, 0, np.nan],

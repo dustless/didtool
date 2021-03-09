@@ -538,17 +538,18 @@ class ListTransformer(TransformerMixin):
                 raise Exception("%s not in x" % col)
 
         self.sep = sep
-        self.sub_sep = sub_sep
+        if sub_sep:
+            self.sub_sep = sub_sep
 
         for col in x.columns:
             x_col = x[col].dropna().tolist()
 
             feat_counter = Counter()
             for item_list_str in x_col:
-                item_list = item_list_str.split(sep)
+                item_list = item_list_str.split(self.sep)
                 # 如果有二级分隔符，则列名取二级分隔符左值
-                if sub_sep:
-                    feat_counter.update([item.split(sub_sep)[0]
+                if self.sub_sep:
+                    feat_counter.update([item.split(self.sub_sep)[0]
                                          for item in item_list])
                 else:
                     feat_counter.update(item_list)
