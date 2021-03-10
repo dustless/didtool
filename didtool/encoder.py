@@ -2,6 +2,8 @@
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn2pmml.preprocessing import PMMLLabelEncoder
+from sklearn.utils import column_or_1d
 
 from .metric import woe, probability
 
@@ -77,3 +79,18 @@ class WOEEncoder(BaseEstimator, TransformerMixin):
                 res[x == key] = self._woe_map[key]
 
         return res.reshape(-1, 1)
+
+
+class WrappedLabelEncoder(PMMLLabelEncoder):
+    """
+    overwrite PMMLLabelEncoder
+    在刷分时，如果类别特征出现新的类别，可以当做缺失值处理，防止崩溃
+    """
+    def transform(self, x):
+        x = column_or_1d(x, warn=True)
+        index = list(self.classes_)
+        xt = np.array(
+            [self.missing_values if pd.isnull(v) or v not in index
+             else index.index(v) for v in x])
+
+        return xt.reshape(-1, 1)

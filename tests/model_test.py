@@ -54,7 +54,7 @@ class TestModel(unittest.TestCase):
         m.save_feature_importance()
 
         # test export
-        m.export(export_pmml=True, export_pkl=True)
+        m.export(export_pkl=True)
 
         date_str = time.strftime("%Y%m%d")
         m_load = joblib.load('./test_out/model_%s.pkl' % date_str)
@@ -80,14 +80,15 @@ class TestModel(unittest.TestCase):
             class_weight='balanced'
         )
         m = LGBModelSingle(data, features, 'target', out_path='./test_out',
-                           model_params=model_params, woe_features=['v7'])
+                           model_params=model_params, woe_features=['v7'],
+                           need_pmml=False)
 
         # test train
         m.train(early_stopping_rounds=10, eval_metric='auc',
                 save_learn_curve=True)
         result = m.evaluate()
         m.save_feature_importance()
-        m.export(export_pmml=False, export_pkl=True)
+        m.export(export_pkl=True)
 
         date_str = time.strftime("%Y%m%d")
         m_load = joblib.load('./test_out/model_%s.pkl' % date_str)
@@ -95,6 +96,11 @@ class TestModel(unittest.TestCase):
         new_res = np.around(m_load.predict_proba(data[features][:10])[:, 1], 6)
         expect_res = round(result['prob'], 6)[:10].tolist()
         self.assertListEqual(list(new_res), expect_res)
+
+        # test new category value
+        data['v5'] = data['v5'].astype(int)
+        data.loc[0, 'v5'] = 999
+        print(m_load.predict_proba(data[features][:1])[:, 1])
 
     def test_model_stacking(self):
         df = pd.read_csv('samples.csv')
@@ -132,7 +138,7 @@ class TestModel(unittest.TestCase):
         m.save_feature_importance()
 
         # test export
-        m.export(export_pmml=True, export_pkl=True)
+        m.export(export_pkl=True)
 
     def test_model_stacking_with_woe_encoder(self):
         df = pd.read_csv('samples.csv')
@@ -154,7 +160,7 @@ class TestModel(unittest.TestCase):
         )
         m = LGBModelStacking(df, features, 'target', out_path='./test_out',
                              model_params=model_params, n_fold=n_fold,
-                             woe_features=['v7'])
+                             woe_features=['v7'], need_pmml=False)
 
         # test train
         m.train(save_learn_curve=False, eval_metric='auc')
@@ -167,7 +173,7 @@ class TestModel(unittest.TestCase):
         m.save_feature_importance()
 
         # test export
-        m.export(export_pmml=False)
+        m.export()
 
     def test_optimize_model_param(self):
         # log config

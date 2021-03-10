@@ -6,16 +6,16 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 import joblib
+import matplotlib.pyplot as plt
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import KFold, cross_val_score
 from sklearn2pmml import PMMLPipeline, sklearn2pmml
 from sklearn2pmml.preprocessing import PMMLLabelEncoder
-from sklearn2pmml.preprocessing.lightgbm import make_lightgbm_column_transformer
-import matplotlib.pyplot as plt
-from sklearn.model_selection import KFold, cross_val_score
 from bayes_opt import BayesianOptimization
 
-from .encoder import WOEEncoder
+
+from .encoder import WOEEncoder, WrappedLabelEncoder
 from .utils import is_categorical
 
 
@@ -51,6 +51,12 @@ class LGBModelSingle:
         params for LGBMClassifier
         (https://lightgbm.readthedocs.io/en/latest/Parameters.html)
 
+    woe_features: list or None
+        features need to be transformed to woe value
+
+    need_pmml: bool, True/False
+        If pmml file is needed, customized encoders cannot be used
+
     Attributes
     --------
     model : object of LGBMClassifier
@@ -71,12 +77,15 @@ class LGBModelSingle:
 
     def __init__(self, data, feature_names, target='target', group_col='group',
                  out_path='out', model_params=None, model_name='model',
-                 woe_features=None):
+                 woe_features=None, need_pmml=True):
         # check data columns
         if target not in data:
             raise Exception("column '%s' is missing from data" % target)
         if group_col not in data:
             raise Exception("column '%s' is missing from data" % group_col)
+        if need_pmml and woe_features:
+            raise Exception("if `woe_features` is specified, then pmml is not "
+                            "supported, `need_pmml` should be set to False")
         for col in feature_names:
             if col not in data:
                 raise Exception("column %s not in `data`, "
@@ -87,6 +96,7 @@ class LGBModelSingle:
         self.model_name = model_name
         self.group_col = group_col
         self.woe_features = woe_features or []
+        self.need_pmml = need_pmml
 
         self.out_path = os.path.abspath(out_path)
         if not os.path.exists(self.out_path):
@@ -108,8 +118,10 @@ class LGBModelSingle:
                 transformers.append([feature, WOEEncoder(), feature])
             # 普通类别型特征，使用PMMLLabelEncoder进行编码转换
             elif is_categorical(self.data[feature]):
-                transformers.append(
-                    (feature, PMMLLabelEncoder(missing_values=-1), [feature]))
+                label_enc = PMMLLabelEncoder(missing_values=-1) \
+                    if self.need_pmml else \
+                    WrappedLabelEncoder(missing_values=-1)
+                transformers.append((feature, label_enc, [feature]))
                 cat_features.append(i)
             else:
                 transformers.append((feature, "passthrough", [feature]))
@@ -265,14 +277,12 @@ class LGBModelSingle:
             plt.xlabel('Feature Importance')
             plt.savefig(os.path.join(self.out_path, 'feature_importance.png'))
 
-    def export(self, export_pmml=False, export_pkl=True):
+    def export(self, export_pkl=True):
         """
         Export trained model
 
         Parameters
         --------
-        export_pmml : bool(default=True)
-            export model as PMML file
         export_pkl: bool(default=False)
             export model as pkl file
         """
@@ -282,11 +292,7 @@ class LGBModelSingle:
 
         date_str = time.strftime("%Y%m%d")
 
-        if export_pmml:
-            # 如果有特征进行了WOE编码转换，则不再支持导出pmml文件
-            if self.woe_features:
-                raise Exception("cannot export pmml file if you specify "
-                                "`woe_features`")
+        if self.need_pmml:
             pmml_file = "%s_%s.pmml" % (self.model_name, date_str)
             sklearn2pmml(self.pipeline, os.path.join(self.out_path, pmml_file),
                          with_repr=False)
@@ -395,6 +401,12 @@ class LGBModelStacking:
         params for LGBMClassifier
         (https://lightgbm.readthedocs.io/en/latest/Parameters.html)
 
+    woe_features: list or None
+        features need to be transformed to woe value
+
+    need_pmml: bool, True/False
+        If pmml file is needed, customized encoders cannot be used
+
     Attributes
     --------
     models : list of LGBMClassifier, length equals to `n_fold`
@@ -413,12 +425,15 @@ class LGBModelStacking:
 
     def __init__(self, data, feature_names, target='target', group_col='group',
                  out_path='out', model_params=None, n_fold=5,
-                 model_name='model', woe_features=None):
+                 model_name='model', woe_features=None, need_pmml=True):
         # check data columns
         if target not in data:
             raise Exception("column '%s' is missing from data" % target)
         if group_col not in data:
             raise Exception("column '%s' is missing from data" % group_col)
+        if need_pmml and woe_features:
+            raise Exception("if `woe_features` is specified, then pmml is not "
+                            "supported, `need_pmml` should be set to False")
         for col in feature_names:
             if col not in data:
                 raise Exception("column %s not in `data`, "
@@ -434,12 +449,14 @@ class LGBModelStacking:
         self.model_name = model_name
         self.feature_names = feature_names
         self.woe_features = woe_features or []
+        self.need_pmml = need_pmml and not woe_features
 
         self.out_path = os.path.abspath(out_path)
         if not os.path.exists(self.out_path):
             os.makedirs(self.out_path)
             print('Create directory %s' % self.out_path)
 
+        self.mappers = []
         self.models = None
         self.pipelines = None
         self.importance_dfs = None
@@ -449,6 +466,27 @@ class LGBModelStacking:
             if is_categorical(self.data[column]) and \
                     column not in self.woe_features:
                 cat_features.append(i)
+
+        for _ in range(self.n_fold):
+            transformers = list()
+            cat_features = list()
+            i = 0
+            for feature in feature_names:
+                # 如果特征需要进行WOE编码，则需要使用WOEEncoder转换
+                if feature in self.woe_features:
+                    transformers.append([feature, WOEEncoder(), feature])
+                # 普通类别型特征，使用PMMLLabelEncoder进行编码转换
+                elif is_categorical(self.data[feature]):
+                    label_enc = PMMLLabelEncoder(missing_values=-1) \
+                        if self.need_pmml else \
+                        WrappedLabelEncoder(missing_values=-1)
+                    transformers.append((feature, label_enc, [feature]))
+                    cat_features.append(i)
+                else:
+                    transformers.append((feature, "passthrough", [feature]))
+                i += 1
+            self.mappers.append(ColumnTransformer(transformers))
+
         self._model_params = {"categorical_feature": cat_features}
         self.update_model_params(model_params)
 
@@ -461,25 +499,9 @@ class LGBModelStacking:
 
         self.models = []
         self.pipelines = []
-        for _ in range(self.n_fold):
-            transformers = list()
-            i = 0
-            for feature in self.feature_names:
-                # 如果特征需要进行WOE编码，则需要使用WOEEncoder转换
-                if feature in self.woe_features:
-                    transformers.append([feature, WOEEncoder(), feature])
-                # 普通类别型特征，使用PMMLLabelEncoder进行编码转换
-                elif is_categorical(self.data[feature]):
-                    transformers.append(
-                        (feature, PMMLLabelEncoder(missing_values=-1),
-                         [feature]))
-                else:
-                    transformers.append((feature, "passthrough", [feature]))
-                i += 1
-
-            mapper = ColumnTransformer(transformers)
+        for i in range(self.n_fold):
             model = lgb.LGBMClassifier(**self._model_params)
-            pipeline = PMMLPipeline([("mapper", mapper),
+            pipeline = PMMLPipeline([("mapper", self.mappers[i]),
                                      ("model", model)])
             self.models.append(model)
             self.pipelines.append(pipeline)
@@ -651,14 +673,12 @@ class LGBModelStacking:
             result[result[self.group_col] == -1]['prob']))
         return result
 
-    def export(self, export_pmml=False, export_pkl=True):
+    def export(self, export_pkl=True):
         """
         Export trained models
 
         Parameters
         --------
-        export_pmml : bool(default=True)
-            export model as PMML file
         export_pkl: bool(default=False)
             export model as pkl file
         """
@@ -669,11 +689,7 @@ class LGBModelStacking:
         date_str = time.strftime("%Y%m%d")
 
         for i in range(self.n_fold):
-            if export_pmml:
-                # 如果有特征进行了WOE编码转换，则不再支持导出pmml文件
-                if self.woe_features:
-                    raise Exception("cannot export pmml file if you specify "
-                                    "`woe_features`")
+            if self.need_pmml:
                 pmml_file = "%s_%d_%s.pmml" % (self.model_name, i, date_str)
                 sklearn2pmml(self.pipelines[i],
                              os.path.join(self.out_path, pmml_file),

@@ -33,3 +33,15 @@ class TestEncoder(unittest.TestCase):
         self.assertAlmostEqual(res[1, 0], 0.538744, 6)
         self.assertAlmostEqual(res[2, 0], 0)
         self.assertAlmostEqual(res[3, 0], 0.041526, 6)
+
+    def test_wrapped_label_encoder(self):
+        x = pd.DataFrame({'x': [1, 5, 6, 2, 3, 5, 6, np.nan]})
+        encoder = didtool.encoder.WrappedLabelEncoder(missing_values=-1)
+        xt = encoder.fit_transform(x).reshape(-1)
+
+        expected_xt = [0, 3, 4, 1, 2, 3, 4, -1]
+        self.assertListEqual(expected_xt, list(xt))
+
+        new_x = [1, 5, 999, np.nan]
+        new_xt = encoder.transform(new_x).reshape(-1)
+        self.assertListEqual(list(new_xt), [0, 3, -1, -1])
