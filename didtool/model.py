@@ -249,9 +249,8 @@ class LGBModelSingle:
         used_cols = [col for col in self.feature_names if col in used_cols]
 
         # save feature names used in model
-        feature_file = open(os.path.join(self.out_path, 'feature.txt'), 'w')
-        feature_file.writelines([col + '\n' for col in used_cols])
-        feature_file.close()
+        with open(os.path.join(self.out_path, 'used_feature.txt'), 'w') as f:
+            f.writelines([col + '\n' for col in used_cols])
 
     def _save_feature_list(self):
         """
@@ -335,10 +334,11 @@ class LGBModelSingle:
             define the process of paramaters searching and the feedback
             indicators
             """
-            model_param = _convert_param_types(model_param)
+            base_param = self._model_params.copy()
+            base_param.update(_convert_param_types(model_param))
             # setting the indicator to loop
             val = np.mean(cross_val_score(
-                lgb.LGBMClassifier(**model_param), x_train, y_train,
+                lgb.LGBMClassifier(**base_param), x_train, y_train,
                 scoring='roc_auc', cv=5
             ))
 
@@ -594,10 +594,9 @@ class LGBModelStacking:
             used_cols = [col for col in self.feature_names if col in used_cols]
 
             # save feature names used in model
-            feature_file = open(
-                os.path.join(self.out_path, 'used_feature_%d.txt' % i), 'w')
-            feature_file.writelines([col + '\n' for col in used_cols])
-            feature_file.close()
+            with open(os.path.join(self.out_path, 'used_feature_%d.txt' % i),
+                      'w') as f:
+                f.writelines([col + '\n' for col in used_cols])
 
     def _save_feature_list(self):
         """
