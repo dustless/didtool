@@ -76,7 +76,7 @@ class LGBModelSingle:
     """
 
     def __init__(self, data, feature_names, target='target', group_col='group',
-                 out_path='out', model_params=None, model_name='model',
+                 out_path='.', model_params=None, model_name='model',
                  woe_features=None, need_pmml=True):
         # check data columns
         if target not in data:
@@ -424,7 +424,7 @@ class LGBModelStacking:
     """
 
     def __init__(self, data, feature_names, target='target', group_col='group',
-                 out_path='out', model_params=None, n_fold=5,
+                 out_path='.', model_params=None, n_fold=5,
                  model_name='model', woe_features=None, need_pmml=True):
         # check data columns
         if target not in data:
