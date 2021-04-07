@@ -4,7 +4,7 @@ from collections import Counter
 
 import numpy as np
 import pandas as pd
-from sklearn.base import TransformerMixin
+from sklearn.base import TransformerMixin, BaseEstimator
 import matplotlib.pyplot as plt
 
 from .utils import is_categorical, handle_categorical_value
@@ -277,7 +277,7 @@ class WOETransformer(TransformerMixin):
         return pd.DataFrame(res)
 
 
-class CategoryTransformer(TransformerMixin):
+class CategoryTransformer(TransformerMixin, BaseEstimator):
     """
     Category Transformer
 
@@ -298,7 +298,7 @@ class CategoryTransformer(TransformerMixin):
         self.df_encoder = pd.DataFrame()
         self.nan_value = 'nan'
 
-    def fit(self, x, max_bins=None, min_coverage=None):
+    def fit(self, x, y=None, max_bins=None, min_coverage=None):
         """
         fit category transformer
 
@@ -306,6 +306,8 @@ class CategoryTransformer(TransformerMixin):
         ----------
         x: pd.DataFrame
             data to fit transformer
+
+        y: placeholder to support pipeline
 
         max_bins: None or int
             max category of every encoded column
@@ -383,7 +385,7 @@ class CategoryTransformer(TransformerMixin):
         return x
 
 
-class OneHotTransformer(TransformerMixin):
+class OneHotTransformer(TransformerMixin, BaseEstimator):
     """
     OneHot Transformer
 
@@ -404,7 +406,7 @@ class OneHotTransformer(TransformerMixin):
         self._features_length = 0
         self.nan_value = 'nan'
 
-    def fit(self, x, max_bins=None, min_coverage=None):
+    def fit(self, x, y=None, max_bins=None, min_coverage=None):
         """
         fit oneHot transformer
 
@@ -412,6 +414,8 @@ class OneHotTransformer(TransformerMixin):
         ----------
         x: pd.DataFrame
             data to fit transformer
+
+        y: placeholder to support pipeline
 
         max_bins: None or int
             max category of every encoded column
@@ -489,7 +493,7 @@ class OneHotTransformer(TransformerMixin):
         return dummies
 
 
-class ListTransformer(TransformerMixin):
+class ListTransformer(TransformerMixin, BaseEstimator):
     """
     List Transformer
     Expand list values to columns
@@ -515,14 +519,16 @@ class ListTransformer(TransformerMixin):
         self.sep = sep
         self.sub_sep = sub_sep
 
-    def fit(self, x, sep=',', sub_sep=None, max_bins=None):
+    def fit(self, x, y=None, sep=',', sub_sep=None, max_bins=None):
         """
-        fit Multi-Hot Transformer
+        fit List Transformer
 
         Parameters
         ----------
         x: pd.DataFrame
             data to fit transformer
+
+        y: placeholder to support pipeline
 
         sep : str
             separator of list value
