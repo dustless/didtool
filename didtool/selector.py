@@ -229,13 +229,16 @@ class Selector:
         print('Training Gradient Boosting Model...')
 
         # Iterate through each fold
-        for _ in range(run_times):
+        for i in range(run_times):
+            # 使用i作为随机数种子，保证结果可重现
             model = lgb.LGBMClassifier(n_estimators=1000,
-                                       learning_rate=0.05, verbose=-1)
+                                       learning_rate=0.05, verbose=-1,
+                                       random_state=i)
 
             train_features, valid_features, train_labels, valid_labels = \
                 train_test_split(self.data, self.label,
-                                 test_size=0.2, stratify=self.label)
+                                 test_size=0.2, stratify=self.label,
+                                 random_state=i)
 
             # Train the model with early stopping
             model.fit(train_features, train_labels, eval_metric='logloss',
