@@ -519,7 +519,7 @@ class ListTransformer(TransformerMixin, BaseEstimator):
         self.sep = sep
         self.sub_sep = sub_sep
 
-    def fit(self, x, y=None, sep=',', sub_sep=None, max_bins=None):
+    def fit(self, x, y=None, max_bins=None):
         """
         fit List Transformer
 
@@ -530,22 +530,12 @@ class ListTransformer(TransformerMixin, BaseEstimator):
 
         y: placeholder to support pipeline
 
-        sep : str
-            separator of list value
-
-        sub_sep : str, default None
-            sub-separator of list value
-
         max_bins: None or int
             max number of encoding bins
         """
         for col in x.columns:
             if col not in x.columns:
                 raise Exception("%s not in x" % col)
-
-        self.sep = sep
-        if sub_sep:
-            self.sub_sep = sub_sep
 
         for col in x.columns:
             x_col = x[col].dropna().tolist()
