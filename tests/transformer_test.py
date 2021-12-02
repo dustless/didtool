@@ -1,6 +1,7 @@
 import unittest
 import pandas as pd
 import numpy as np
+from IPython.display import display
 
 import didtool
 
@@ -38,7 +39,7 @@ class TestTransformer(unittest.TestCase):
         # transformer.plot_woe()
 
         # fit another categorical value
-        x = df['v5'].apply(lambda a: (a+1)*2).astype('category')
+        x = df['v5'].apply(lambda a: (a + 1) * 2).astype('category')
         x[:100] = np.nan
         transformer.fit(x, y, 'v5')
         self.assertEqual(transformer.var_name, 'v5')
@@ -57,22 +58,33 @@ class TestTransformer(unittest.TestCase):
 
     def test_woe_transformer(self):
         df = pd.read_csv('samples.csv')
-        x = df[['v1', 'v5']]
         y = df['target']
-        x['v5'] = x['v5'].astype('category')
 
-        transformer = didtool.WOETransformer()
-        transformer.fit(x, y)
-        print(transformer.woe_df)
+        transformer = didtool.WOETransformer(features=['v1', 'v2', 'v5'])
+        transformer.fit(df[['v1', 'v2', 'v5', 'target']], y)
+        display(transformer.woe_df)
 
-        test_x = pd.DataFrame({'v1': [0.02, 0.05, np.nan], 'v5': [0, 1, -1]})
+        train_x = pd.DataFrame({'v1': [0.02, 0.02, 0.1, np.nan],
+                                'v2': ['0.05', '1', '1', np.nan],
+                                'v3': ['cc', np.nan, 'f', np.nan],
+                                'v4': ['张三', np.nan, '王五', '王五'],
+                                'label': [0, 1, 0, 1]})
+
+        test_x = pd.DataFrame({'v1': [0.02, 0.05, 0.1, np.nan],
+                               'v2': ['0.02', '0.05', '1', np.nan],
+                               'v3': ['a', 'cc', 'f', np.nan],
+                               'v4': ['张三', '李四', '王五', np.nan],
+                               'label': [0, 1, 0, 0]})
+        transformer = didtool.WOETransformer(features=['v1', 'v2', 'v3', 'v4'])
+        transformer.fit(train_x, train_x['label'])
         res = transformer.transform(test_x)
-        self.assertAlmostEqual(res['v1'][0], 1.439120, 6)
-        self.assertAlmostEqual(res['v1'][1], -0.640322, 6)
-        self.assertAlmostEqual(res['v1'][2], -1.017155, 6)
-        self.assertAlmostEqual(res['v5'][0], -0.216908, 6)
-        self.assertAlmostEqual(res['v5'][1], 0.484547, 6)
-        self.assertAlmostEqual(res['v5'][2], 0)
+
+        display(res)
+
+        np.testing.assert_array_equal(np.round(res['v1'].to_list(), 6), [0., 0., -0.693147, 0.693147])
+        np.testing.assert_array_equal(np.round(res['v2'].to_list(), 6), [0., -0.693147, 0., 0.693147])
+        np.testing.assert_array_equal(np.round(res['v3'].to_list(), 6), [0., -1.386294, -1.386294, 1.386294])
+        np.testing.assert_array_equal(np.round(res['v4'].to_list(), 6), [-0.693147, 0., 0., 0.693147])
 
     def test_category_transformer(self):
         df = pd.DataFrame({

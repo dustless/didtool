@@ -197,6 +197,9 @@ class WOETransformer(TransformerMixin):
 
     Parameters
     ----------
+    features : list of str
+        columns to woe transformer
+
     cut_method : str, optional (default='dt')
         Cut values into different buckets with specific method.
         Only used for continuous feature.
@@ -211,9 +214,11 @@ class WOETransformer(TransformerMixin):
         detail info of buckets
     """
 
-    def __init__(self, cut_method='dt', n_bins=DEFAULT_BINS):
+    def __init__(self, features, cut_method='dt', n_bins=DEFAULT_BINS):
+        self.features = features
         self.cut_method = cut_method
         self.n_bins = n_bins
+        self.features_map = {}
         self.transformers = {}
         self.woe_df = None
 
@@ -228,17 +233,28 @@ class WOETransformer(TransformerMixin):
         y : array-like
             the target's value
         """
-        self.transformers = {}
-        self.woe_df = None
+        for feature in self.features:
+            if feature not in x.columns:
+                raise Exception('{} not in x'.format(feature))
+
+        # 事先对string类进行编码
+        tmp_df = x[self.features]
+        tmp_df.loc[:, 'label'] = y
+        for feature in self.features:
+            tmp_df.loc[:, feature] = tmp_df[feature].astype(str)
+            self.features_map[feature] = {k: v for v, k in
+                                          enumerate(tmp_df.groupby(feature).label.mean().sort_values().index)}
+            # 对原数据进行编码
+            x.loc[:, feature] = x[feature].astype(str).map(self.features_map[feature])
 
         # use multi-process
         res = []
         pool = Pool(cpu_count())
 
-        for name, v in x.iteritems():
+        for feature in self.features:
             r = pool.apply_async(
                 _create_and_fit_transformer,
-                args=(self.cut_method, self.n_bins, v, y, name))
+                args=(self.cut_method, self.n_bins, x[feature], y, feature))
             res.append(r)
 
         pool.close()
@@ -266,13 +282,19 @@ class WOETransformer(TransformerMixin):
         ----------
         res : DataFrame
         """
+        for feature in self.features:
+            if feature not in x.columns:
+                raise Exception('{} not in x'.format(feature))
+            # 对原数据先编码，后面再进行woe转换
+            x.loc[:, feature] = x[feature].astype(str).map(self.features_map[feature])
+
         res = {}
-        for name, v in x.iteritems():
-            if name in self.transformers:
-                tmp = self.transformers[name].transform(v, default)
-                res[name] = tmp
+        for col in x.columns:
+            if col in self.features:
+                tmp = self.transformers[col].transform(x[col], default)
             else:
-                raise Exception("column `%s` has not been fitted" % name)
+                tmp = x[col].to_list()
+            res[col] = tmp
 
         return pd.DataFrame(res)
 
