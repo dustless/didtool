@@ -39,10 +39,10 @@ class SingleWOETransformer(TransformerMixin):
     woe_df: DataFrame
         detail info of buckets
 
-    feature_map : dict
+    value2code : dict
         when data is not continuous, encode the data
 
-    map_feature : dict
+    code2value : dict
         when "plot_woe", decode the data
     """
 
@@ -58,8 +58,8 @@ class SingleWOETransformer(TransformerMixin):
 
         # DataFrame store detail of bins
         self.woe_df = None
-        self.feature_map = {}
-        self.map_feature = {}
+        self.value2code = {}
+        self.code2value = {}
 
     def fit(self, x, y, var_name='x'):
         """
@@ -79,12 +79,12 @@ class SingleWOETransformer(TransformerMixin):
             tmp_df = pd.DataFrame({var_name: x, 'label': y})
             tmp_df.loc[:, var_name] = tmp_df[var_name].astype(str).replace(['nan', ''], np.nan)
 
-            self.feature_map = {k: v for v, k in
-                                enumerate(tmp_df.groupby(var_name).label.mean().sort_values().index)}
+            self.value2code = {k: v for v, k in
+                               enumerate(tmp_df.groupby(var_name).label.mean().sort_values().index)}
             # 该map用来解析编码的
-            self.map_feature = {v: k for k, v in self.feature_map.items()}
+            self.code2value = {v: k for k, v in self.value2code.items()}
             # 对原数据进行编码
-            x = np.array([self.feature_map.get(str(item), np.nan) for item in x])
+            x = np.array([self.value2code.get(str(item), np.nan) for item in x])
 
         self.var_name = var_name
         self.bins = []
@@ -93,8 +93,13 @@ class SingleWOETransformer(TransformerMixin):
         woe_bins = []
         x, bins = cut(x, y, n_bins=self.n_bins, method=self.cut_method,
                       return_bins=True)
-        bins[0] = -np.inf
-        bins[-1] = np.inf
+
+        if self.is_continuous:
+            bins[0] = -np.inf
+            bins[-1] = np.inf
+        else:
+            bins[0] = -99
+            bins[-1] = max(self.code2value.keys())
         self.bins = bins
         if any(x == -1):
             woe_bins.append('NA')
@@ -103,12 +108,8 @@ class SingleWOETransformer(TransformerMixin):
             if self.is_continuous:
                 woe_bins.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
             else:
-                if np.isinf(bins[i]):
-                    bins[i] = -99
-                if np.isinf(bins[i + 1]):
-                    bins[i + 1] = max(self.map_feature.keys())
                 for item in range(max(0, int(bins[i] + 1)), int(bins[i + 1]) + 1):
-                    val.append(self.map_feature.get(item))
+                    val.append(self.code2value.get(item))
                 woe_bins.append(val)
 
         value = np.sort(np.unique(x))
@@ -163,7 +164,7 @@ class SingleWOETransformer(TransformerMixin):
         res : array-like
         """
         if not self.is_continuous or is_categorical(x):
-            x = np.array([self.feature_map.get(str(item), np.nan) for item in x])
+            x = np.array([self.value2code.get(str(item), np.nan) for item in x])
 
         x = cut_with_bins(x, self.bins)
         res = np.zeros(len(x))
