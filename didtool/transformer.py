@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
 import matplotlib.pyplot as plt
 
-from .utils import is_categorical, handle_categorical_value
+from .utils import is_categorical
 from .cut import cut, DEFAULT_BINS, cut_with_bins
 from .metric import woe, probability
 
@@ -23,7 +23,8 @@ class SingleWOETransformer(TransformerMixin):
         Only used for continuous feature.
     n_bins : int, default DEFAULT_BINS
         Max num of buckets. Only used for continuous feature.
-
+    is_continuous : bool
+        whether the feature fitted is continuous
     Attributes
     --------
     bins : list of thresholds
@@ -32,28 +33,33 @@ class SingleWOETransformer(TransformerMixin):
     woe_map : dict
         map of bins_num to woe value
 
-    is_continuous : bool
-        whether the feature fitted is continuous
-
     var_name : str
         feature name
 
     woe_df: DataFrame
         detail info of buckets
+
+    value2code : dict
+        when data is not continuous, encode the data
+
+    code2value : dict
+        when "plot_woe", decode the data
     """
 
-    def __init__(self, cut_method='dt', n_bins=DEFAULT_BINS):
+    def __init__(self, cut_method='dt', n_bins=DEFAULT_BINS, is_continuous=True):
         self.cut_method = cut_method
         self.n_bins = n_bins
 
         # init here and updated when `fit` called
         self.bins = []
         self.woe_map = {}
-        self.is_continuous = True
+        self.is_continuous = is_continuous
         self.var_name = 'x'
 
         # DataFrame store detail of bins
         self.woe_df = None
+        self.value2code = {}
+        self.code2value = {}
 
     def fit(self, x, y, var_name='x'):
         """
@@ -68,25 +74,43 @@ class SingleWOETransformer(TransformerMixin):
         var_name : str
             feature name of x
         """
+        if not self.is_continuous or is_categorical(x):
+
+            tmp_df = pd.DataFrame({var_name: x, 'label': y})
+            tmp_df.loc[:, var_name] = tmp_df[var_name].astype(str).replace(['nan', ''], np.nan)
+
+            self.value2code = {k: v for v, k in
+                               enumerate(tmp_df.groupby(var_name).label.mean().sort_values().index)}
+            # 该map用来解析编码的
+            self.code2value = {v: k for k, v in self.value2code.items()}
+            # 对原数据进行编码
+            x = np.array([self.value2code.get(str(item), np.nan) for item in x])
+
         self.var_name = var_name
-        self.is_continuous = not is_categorical(x)
         self.bins = []
         self.woe_map = {}
 
         woe_bins = []
+        x, bins = cut(x, y, n_bins=self.n_bins, method=self.cut_method,
+                      return_bins=True)
+
         if self.is_continuous:
-            x, bins = cut(x, y, n_bins=self.n_bins, method=self.cut_method,
-                          return_bins=True)
             bins[0] = -np.inf
             bins[-1] = np.inf
-            self.bins = bins
-            if any(x == -1):
-                woe_bins.append('NA')
-            for i in range(len(bins) - 1):
-                woe_bins.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
         else:
-            x = handle_categorical_value(x)
-            woe_bins = ['[%s]' % v for v in np.sort(np.unique(x))]
+            bins[0] = -99
+            bins[-1] = max(self.code2value.keys())
+        self.bins = bins
+        if any(x == -1):
+            woe_bins.append('NA')
+        for i in range(len(bins) - 1):
+            val = []
+            if self.is_continuous:
+                woe_bins.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
+            else:
+                for item in range(max(0, int(bins[i] + 1)), int(bins[i + 1]) + 1):
+                    val.append(self.code2value.get(item))
+                woe_bins.append(val)
 
         value = np.sort(np.unique(x))
         num_bins = len(value)
@@ -139,11 +163,10 @@ class SingleWOETransformer(TransformerMixin):
         ----------
         res : array-like
         """
-        if self.is_continuous:
-            x = cut_with_bins(x, self.bins)
-        else:
-            x = handle_categorical_value(x)
+        if not self.is_continuous or is_categorical(x):
+            x = np.array([self.value2code.get(str(item), np.nan) for item in x])
 
+        x = cut_with_bins(x, self.bins)
         res = np.zeros(len(x))
 
         # replace unknown group to default value
@@ -185,8 +208,8 @@ class SingleWOETransformer(TransformerMixin):
         plt.show()
 
 
-def _create_and_fit_transformer(cut_method, n_bins, x, y, name):
-    transformer = SingleWOETransformer(cut_method, n_bins)
+def _create_and_fit_transformer(cut_method, n_bins, x, y, name, is_continuous):
+    transformer = SingleWOETransformer(cut_method, n_bins, is_continuous)
     transformer.fit(x, y, name)
     return transformer
 
@@ -197,6 +220,9 @@ class WOETransformer(TransformerMixin):
 
     Parameters
     ----------
+    features : list of str
+        columns to woe transformer
+
     cut_method : str, optional (default='dt')
         Cut values into different buckets with specific method.
         Only used for continuous feature.
@@ -211,7 +237,8 @@ class WOETransformer(TransformerMixin):
         detail info of buckets
     """
 
-    def __init__(self, cut_method='dt', n_bins=DEFAULT_BINS):
+    def __init__(self, cut_method='dt', n_bins=DEFAULT_BINS, features=None):
+        self.features = features
         self.cut_method = cut_method
         self.n_bins = n_bins
         self.transformers = {}
@@ -228,17 +255,22 @@ class WOETransformer(TransformerMixin):
         y : array-like
             the target's value
         """
-        self.transformers = {}
-        self.woe_df = None
+        # 若不指定特征，则对全部列进行编码
+        if not self.features:
+            self.features = x.columns.to_list()
+
+        for feature in self.features:
+            if feature not in x.columns:
+                raise Exception('{} not in x'.format(feature))
 
         # use multi-process
         res = []
         pool = Pool(cpu_count())
 
-        for name, v in x.iteritems():
+        for feature in self.features:
             r = pool.apply_async(
                 _create_and_fit_transformer,
-                args=(self.cut_method, self.n_bins, v, y, name))
+                args=(self.cut_method, self.n_bins, x[feature], y, feature, False))
             res.append(r)
 
         pool.close()
@@ -266,13 +298,17 @@ class WOETransformer(TransformerMixin):
         ----------
         res : DataFrame
         """
+        for feature in self.features:
+            if feature not in x.columns:
+                raise Exception('{} not in x'.format(feature))
+
         res = {}
-        for name, v in x.iteritems():
-            if name in self.transformers:
-                tmp = self.transformers[name].transform(v, default)
-                res[name] = tmp
+        for col in x.columns:
+            if col in self.features:
+                tmp = self.transformers[col].transform(x[col], default)
             else:
-                raise Exception("column `%s` has not been fitted" % name)
+                tmp = x[col].to_list()
+            res[col] = tmp
 
         return pd.DataFrame(res)
 
