@@ -1,4 +1,7 @@
-# Install
+# didtool
+[![pipeline status](http://icode.wejoydata.com/did/common/didtool/badges/master/pipeline.svg)](http://icode.wejoydata.com/did/common/didtool/-/commits/master)
+
+## Install
 ```
 pip install didtool
 ```
