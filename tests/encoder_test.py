@@ -1,13 +1,14 @@
 import unittest
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 import didtool
 
 
 class TestEncoder(unittest.TestCase):
     def test_woe_encoder(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         x = df['v5'].astype('category')
         y = df['target']
 

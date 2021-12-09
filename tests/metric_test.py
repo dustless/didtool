@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import random
@@ -34,7 +36,7 @@ class TestMetric(unittest.TestCase):
         self.assertAlmostEqual(psi, 0.07701635339554946)
 
     def test_ks(self):
-        data = pd.read_csv("samples.csv")[['target']]
+        data = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))[['target']]
 
         data['pro'] = data['target'].apply(
             lambda x: random.uniform(0, 0.8) if x < 1 else random.uniform(0.2, 1))

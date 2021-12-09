@@ -1,0 +1,15 @@
+stages:
+  - install_deps
+  - test
+
+# 安装依赖
+install_deps:
+  stage: install_deps
+  script:
+    - pip install -r dev_requirements.txt
+
+# 运行测试用例
+test:
+  stage: test
+  script:
+    - sh run_unittest.sh

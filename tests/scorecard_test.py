@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+
 import pandas as pd
 
 from didtool.scorecard import ScoreCardTransformer
@@ -7,7 +9,7 @@ import random
 
 class TestScoreCard(unittest.TestCase):
     def test_score_card_transformer(self):
-        df = pd.read_csv("samples.csv")[['target']]
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))[['target']]
 
         random.seed(1)
         df['prob'] = df['target'].apply(
@@ -16,8 +18,8 @@ class TestScoreCard(unittest.TestCase):
 
         transformer = ScoreCardTransformer(bad_flag=True)
         transformer.fit(df['prob'].values, df['target'].values)
-        print(transformer.binning_df)
-        print(transformer.mapping_df)
+        # print(transformer.binning_df)
+        # print(transformer.mapping_df)
         # transformer.plot_bins()
         scores = transformer.transform([0.05, 0.5, 0.8])
         self.assertEqual(scores[0], 815)

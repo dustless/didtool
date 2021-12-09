@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 
@@ -87,7 +89,7 @@ class TestSelector(unittest.TestCase):
         self.assertEqual(selector.data.shape[1], 2)
 
     def test_drop_all(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         selector = Selector(df.drop("target", axis=1), df["target"])
         selector.drop_missing(0.8).drop_low_iv(0.1).drop_correlated(0.8) \
             .drop_low_importance(0.85)

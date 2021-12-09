@@ -15,14 +15,15 @@ from pathlib import Path
 
 class TestModel(unittest.TestCase):
     def setUp(self):
-        for root, dirs, files in os.walk('./test_out', topdown=False):
+        self.out_path = Path(__file__).parent / 'test_out'
+        for root, dirs, files in os.walk(str(self.out_path), topdown=False):
             for name in files:
                 os.remove(os.path.join(root, name))
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
 
     def test_model_single(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         df['v5'] = df['v5'].apply(lambda x: (x + 1) * 2).astype('category')
 
         features = [col for col in df.columns.values if col != 'target']
@@ -35,7 +36,7 @@ class TestModel(unittest.TestCase):
             reg_lambda=1, min_data_in_leaf=20, random_state=27,
             class_weight='balanced'
         )
-        m = LGBModelSingle(data, features, 'target', out_path='./test_out',
+        m = LGBModelSingle(data, features, 'target', out_path=str(self.out_path),
                            model_params=model_params)
 
         # test train
@@ -57,14 +58,14 @@ class TestModel(unittest.TestCase):
         m.export(export_pkl=True)
 
         date_str = time.strftime("%Y%m%d")
-        m_load = joblib.load('./test_out/model_%s.pkl' % date_str)
+        m_load = joblib.load(str(self.out_path / ('model_%s.pkl' % date_str)))
         data['v5'] = data['v5'].astype(int)
         new_res = np.around(m_load.predict_proba(data[features][:10])[:, 1], 6)
         expect_res = round(result['prob'], 6)[:10].tolist()
         self.assertListEqual(list(new_res), expect_res)
 
     def test_model_single_with_woe_encoder(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         df['v5'] = df['v5'].apply(lambda x: (x + 1) * 2).astype('category')
         df['v7'] = df['target'].apply(
             lambda x: random.randint(0, 1) * x + random.randint(0, 2) * (1 - x))
@@ -79,7 +80,7 @@ class TestModel(unittest.TestCase):
             reg_lambda=1, min_data_in_leaf=20, random_state=27,
             class_weight='balanced'
         )
-        m = LGBModelSingle(data, features, 'target', out_path='./test_out',
+        m = LGBModelSingle(data, features, 'target', out_path=str(self.out_path),
                            model_params=model_params, woe_features=['v7'],
                            need_pmml=False)
 
@@ -91,7 +92,7 @@ class TestModel(unittest.TestCase):
         m.export(export_pkl=True)
 
         date_str = time.strftime("%Y%m%d")
-        m_load = joblib.load('./test_out/model_%s.pkl' % date_str)
+        m_load = joblib.load(str(self.out_path / ('model_%s.pkl' % date_str)))
         data['v5'] = data['v5'].astype('category')
         new_res = np.around(m_load.predict_proba(data[features][:10])[:, 1], 6)
         expect_res = round(result['prob'], 6)[:10].tolist()
@@ -103,7 +104,7 @@ class TestModel(unittest.TestCase):
         print(m_load.predict_proba(data[features][:1])[:, 1])
 
     def test_model_stacking(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         df['v5'] = df['v5'].astype('category')
 
         features = [col for col in df.columns.values if col != 'target']
@@ -118,7 +119,7 @@ class TestModel(unittest.TestCase):
             reg_lambda=1, min_data_in_leaf=10, random_state=27,
             class_weight='balanced'
         )
-        m = LGBModelStacking(df, features, 'target', out_path='./test_out',
+        m = LGBModelStacking(df, features, 'target', out_path=str(self.out_path),
                              model_params=model_params, n_fold=n_fold)
 
         # test train
@@ -141,7 +142,7 @@ class TestModel(unittest.TestCase):
         m.export(export_pkl=True)
 
     def test_model_stacking_with_woe_encoder(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         df['v5'] = df['v5'].astype('category')
         df['v7'] = df['target'].apply(
             lambda x: random.randint(0, 1) * x + random.randint(0, 2) * (1 - x))
@@ -158,7 +159,7 @@ class TestModel(unittest.TestCase):
             reg_lambda=1, min_data_in_leaf=10, random_state=27,
             class_weight='balanced'
         )
-        m = LGBModelStacking(df, features, 'target', out_path='./test_out',
+        m = LGBModelStacking(df, features, 'target', out_path=str(self.out_path),
                              model_params=model_params, n_fold=n_fold,
                              woe_features=['v7'], need_pmml=False)
 
@@ -177,14 +178,14 @@ class TestModel(unittest.TestCase):
 
     def test_optimize_model_param(self):
         # log config
-        log_file_dir = Path("./test_out/bayes_parameter_search.txt")
+        log_file_dir = Path(__file__).parent / "test_out/bayes_parameter_search.txt"
         if log_file_dir.exists():
             sys.stdout = Logger(log_file_dir)
         else:
             open(log_file_dir, "w").close()
             sys.stdout = Logger(log_file_dir)
         # data read and split
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         df['v5'] = df['v5'].astype('category')
         features = [col for col in df.columns.values if col != 'target']
         data = split_data_random(df, 0.6, 0.2)
@@ -195,7 +196,7 @@ class TestModel(unittest.TestCase):
             reg_lambda=1, min_data_in_leaf=20, random_state=27,
             class_weight='balanced'
         )
-        m = LGBModelSingle(data, features, 'target', out_path='./test_out',
+        m = LGBModelSingle(data, features, 'target', out_path=str(self.out_path),
                            model_params=model_params)
 
         searching_space = {

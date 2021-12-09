@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 
@@ -29,7 +31,7 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(iv_df["iv"]['x2'], 1.398188, places=6)
 
     def test_psi_all(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         df['v5'] = df['v5'].astype('category')
         df['month'] = df.index % 6
         df['month'] = df['month'].apply(lambda x: "m%02d" % (x + 1))

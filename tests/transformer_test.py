@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 
@@ -7,7 +9,7 @@ import didtool
 
 class TestTransformer(unittest.TestCase):
     def test_single_woe_transformer(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         x = df['v1']
         y = df['target']
 
@@ -21,9 +23,9 @@ class TestTransformer(unittest.TestCase):
         )
         self.assertDictEqual(
             transformer.woe_map,
-            {-1: -1.0171553366121717, 0: -0.10844300821451114, 1: 2.825413861621392, 2: 0.5741220630148971,
-             3: 2.621814906380153, 4: 3.924026150289502, 5: 1.4391195005015018, 6: 2.738402484631763,
-             7: 0.340507211833392, 8: 2.132266681061447, 9: -0.6403220411783341}
+            {-1: -1.0171553366121715, 0: -0.10844300821451114, 1: 2.825413861621392, 2: 0.5741220630148971,
+             3: 2.621814906380153, 4: 3.924026150289502, 5: 1.4391195005015018, 6: 2.7384024846317625,
+             7: 0.340507211833392, 8: 2.1322666810614472, 9: -0.6403220411783341}
 
         )
         self.assertAlmostEqual(transformer.woe_df['var_iv'][0], 1.878709, 6)
@@ -48,7 +50,7 @@ class TestTransformer(unittest.TestCase):
         print(transformer.woe_df)
 
     def test_woe_transformer(self):
-        df = pd.read_csv('samples.csv')
+        df = pd.read_csv(str(Path(__file__).parent / 'samples.csv'))
         y = df['target']
 
         transformer = didtool.WOETransformer(features=['v1', 'v2', 'v5'])
@@ -70,7 +72,6 @@ class TestTransformer(unittest.TestCase):
         transformer.fit(train_x, train_x['label'])
         res = transformer.transform(test_x)
 
-        print(res)
         np.testing.assert_array_equal(np.round(res['v1'].to_list(), 6), [0., 0.693147, -0.693147, 0.693147])
         np.testing.assert_array_equal(np.round(res['v2'].to_list(), 6), [0.693147, -0.693147, 0., 0.693147])
         np.testing.assert_array_equal(np.round(res['v3'].to_list(), 6), [1.386294, -1.386294, -1.386294, 1.386294])
