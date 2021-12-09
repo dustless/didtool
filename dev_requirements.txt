@@ -1,7 +1,7 @@
 numpy
 pandas
 bayesian-optimization==1.2.0
-seaborn,
+seaborn
 scikit-learn
 lightgbm
 sklearn2pmml

@@ -145,8 +145,7 @@ class ScoreCardTransformer(BaseEstimator, TransformerMixin):
         # score = standard_score + pdo * ln(odds / standard_odds) / ln(2)
         # reference: (https://zhuanlan.zhihu.com/p/82670834)
         binning_df['score'] = binning_df['adjusted_odds'].apply(
-            lambda x: int(self._standard_score +
-                          self._pdo * math.log2(x / self._standard_odds)))
+            lambda x: int(self._standard_score + self._pdo * math.log2(x / self._standard_odds)))
         binning_df['mean_prob'] = \
             (binning_df['prob_l'] + binning_df['prob_r']) / 2
         return binning_df
@@ -224,8 +223,7 @@ class ScoreCardTransformer(BaseEstimator, TransformerMixin):
         mapping_df = pd.DataFrame(index=range(self._n_bins + 1),
                                   columns=['slope', 'intercept'])
         mapping_df['slope'] = (anchor['score_r'] - anchor['score_l']) / den
-        mapping_df['intercept'] = (anchor['prob_r'] * anchor['score_l'] -
-                                   anchor['prob_l'] * anchor['score_r']) / den
+        mapping_df['intercept'] = (anchor['prob_r'] * anchor['score_l'] - anchor['prob_l'] * anchor['score_r']) / den
         return mapping_df
 
     def plot_bins(self):

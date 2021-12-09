@@ -529,8 +529,7 @@ class LGBModelStacking:
         """
         self.importance_dfs = []
         for k in range(0, self.n_fold):
-            train_k = self.data[(self.data[self.group_col] >= 0) &
-                                (self.data[self.group_col] != k)]
+            train_k = self.data[(self.data[self.group_col] >= 0) & (self.data[self.group_col] != k)]
             val_k = self.data[self.data[self.group_col] == k]
 
             # step0: fit mapper

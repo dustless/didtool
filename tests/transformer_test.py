@@ -21,13 +21,12 @@ class TestTransformer(unittest.TestCase):
             [-np.inf, 0.00455, 0.00485, 0.0072, 0.01415, 0.01485, 0.0212,
              0.02815, 0.03165, 0.04235, np.inf]
         )
-        self.assertDictEqual(
-            transformer.woe_map,
-            {-1: -1.0171553366121715, 0: -0.10844300821451114, 1: 2.825413861621392, 2: 0.5741220630148971,
-             3: 2.621814906380153, 4: 3.924026150289502, 5: 1.4391195005015018, 6: 2.7384024846317625,
-             7: 0.340507211833392, 8: 2.1322666810614472, 9: -0.6403220411783341}
-
-        )
+        expect_dict = {
+            -1: -1.0171553366121715, 0: -0.10844300821451114, 1: 2.825413861621392, 2: 0.5741220630148971,
+            3: 2.621814906380153, 4: 3.924026150289502, 5: 1.4391195005015018, 6: 2.7384024846317625,
+            7: 0.340507211833392, 8: 2.1322666810614472, 9: -0.6403220411783341}
+        for key in expect_dict:
+            self.assertAlmostEqual(expect_dict[key], transformer.woe_map.get(key, 0), 6)
         self.assertAlmostEqual(transformer.woe_df['var_iv'][0], 1.878709, 6)
         self.assertEqual(transformer.woe_df.shape[0], 11)
         self.assertEqual(transformer.var_name, 'v1')

@@ -1,15 +1,42 @@
+# 指定executor所用的docker镜像
+# image: python:3.8
+image: python-jdk:3.8_8
+
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+# Pip's cache doesn't store the python packages
+# https://pip.pypa.io/en/stable/reference/pip_install/#caching
+#
+# If you want to also cache the installed packages, you have to install
+# them in a virtualenv and cache it as well.
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python -V  # Print out python version for debugging
+  - pip install -i https://pypi.tuna.tsinghua.edu.cn/simple virtualenv
+  - virtualenv venv
+  - source venv/bin/activate
+
 stages:
-  - install_deps
+  - style
   - test
 
-# 安装依赖
-install_deps:
-  stage: install_deps
+# 代码风格检测
+style:
+  stage: style
   script:
-    - pip install -r dev_requirements.txt
+    - pip install pycodestyle -i https://pypi.tuna.tsinghua.edu.cn/simple
+    - pycodestyle didtool/*.py
 
 # 运行测试用例
 test:
   stage: test
   script:
-    - sh run_unittest.sh
+    - pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r dev_requirements.txt
+    - ./run_unittest.sh

@@ -159,12 +159,10 @@ def _psi_discrete(expected_array, actual_array, detail=False):
     actual_rate[actual_rate == 0] = 1e-10
     expected_rate[expected_rate == 0] = 1e-10
 
-    psi_value = np.sum((actual_rate - expected_rate) *
-                       np.log(actual_rate / expected_rate))
+    psi_value = np.sum((actual_rate - expected_rate) * np.log(actual_rate / expected_rate))
 
     if detail:
-        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate},
-                          index=groups)
+        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate}, index=groups)
         return psi_value, df
     return psi_value
 
@@ -213,8 +211,7 @@ def _psi_continuous(expected_array, actual_array, n_bins=DEFAULT_BINS,
     actual_rate[actual_rate == 0] = 1e-10
     expected_rate[expected_rate == 0] = 1e-10
 
-    psi_value = np.sum((actual_rate - expected_rate) *
-                       np.log(actual_rate / expected_rate))
+    psi_value = np.sum((actual_rate - expected_rate) * np.log(actual_rate / expected_rate))
 
     if detail:
         bin_ranges = []
@@ -222,8 +219,7 @@ def _psi_continuous(expected_array, actual_array, n_bins=DEFAULT_BINS,
             bin_ranges.append('NA')
         for i in range(len(bins) - 1):
             bin_ranges.append('(%.4f, %.4f]' % (bins[i], bins[i + 1]))
-        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate},
-                          index=bin_ranges)
+        df = pd.DataFrame({"expect": expected_rate, "actual": actual_rate}, index=bin_ranges)
         return psi_value, df
     return psi_value
 
@@ -249,8 +245,7 @@ def psi(expected_array, actual_array, n_bins=DEFAULT_BINS, plot=False,
     psi_value : float
     """
     if is_continuous:
-        psi_value, df = _psi_continuous(expected_array, actual_array, n_bins,
-                                        detail=True)
+        psi_value, df = _psi_continuous(expected_array, actual_array, n_bins, detail=True)
     else:
         expected_array = handle_categorical_value(expected_array)
         actual_array = handle_categorical_value(actual_array)
@@ -381,8 +376,7 @@ def compare_roc(y_true_list, y_pred_list, model_name_list, out_path=None,
         fpr, tpr, _ = roc_curve(y_true_list[i], y_pred_list[i])
         ks_value = np.max(tpr - fpr)
         auc_value = auc(fpr, tpr)
-        label = '%s-AUC(%.3f)-KS(%.3f)' % \
-                (model_name_list[i], auc_value, ks_value)
+        label = '%s-AUC(%.3f)-KS(%.3f)' % (model_name_list[i], auc_value, ks_value)
         plt.plot(fpr, tpr, lw=1, label=label)
 
     plt.ylim([0.0, 1.0])
@@ -585,8 +579,7 @@ def plot_ks_in_cum(y_true, y_pred, out_path=None, file_name='pr_ks.png'):
                 linestyle='--')
     plt.axhline(ksds.loc[ksds.ks.idxmax(), 'cumsum_bad'], color='red',
                 linestyle='--')
-    plt.title('KS=%s ' % np.round(ks_value, 4) +
-              'at Pop=%s' % np.round(ks_pop, 4), fontsize=15)
+    plt.title('KS=%s ' % np.round(ks_value, 4) + 'at Pop=%s' % np.round(ks_pop, 4), fontsize=15)
     if out_path:
         plt.savefig(os.path.join(out_path, file_name))
     else:

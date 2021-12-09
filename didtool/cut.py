@@ -254,7 +254,7 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
                    return_bins=False):
     """
     计算某个特征每种属性值的卡方统计量
-    params: 
+    params:
         x: 待分箱特征
             array-like
                 The input array to be binned. Must be 1-dimensional.
@@ -300,8 +300,7 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
             if i_value[2] == i_value_next[2]:
                 chi_score = 0
             else:
-                label_total = i_value[0] + i_value_next[0] + i_value[1] + \
-                              i_value_next[1]
+                label_total = i_value[0] + i_value_next[0] + i_value[1] + i_value_next[1]
                 label_0_ratio = (i_value[0] + i_value_next[0]) / label_total
                 label_1_ratio = (i_value[1] + i_value_next[1]) / label_total
                 i_1_cal = (i_value[0] + i_value[1]) * label_1_ratio

@@ -14,8 +14,9 @@ class TestEncoder(unittest.TestCase):
 
         encoder = didtool.WOEEncoder()
         encoder.fit(x, y)
-        self.assertDictEqual(encoder._woe_map,
-                             {0: -0.21690835519242824, 1: 0.48454658205632983})
+        expect_dict = {0: -0.21690835519242824, 1: 0.48454658205632983}
+        for key in expect_dict:
+            self.assertAlmostEqual(expect_dict[key], encoder._woe_map.get(key, 0), 6)
 
         res = encoder.transform(np.array([0, 1, -1]))
         self.assertAlmostEqual(res[0, 0], -0.216908, 6)
@@ -26,9 +27,9 @@ class TestEncoder(unittest.TestCase):
         x = df['v5']
         x[:100] = np.nan
         encoder.fit(x, y)
-        self.assertDictEqual(encoder._woe_map,
-                             {0.0: -0.2511705085616937, 1.0: 0.5387442239332461,
-                              'NA': 0.04152558412767761})
+        expect_dict = {0.0: -0.2511705085616937, 1.0: 0.5387442239332461, 'NA': 0.04152558412767761}
+        for key in expect_dict:
+            self.assertAlmostEqual(expect_dict[key], encoder._woe_map.get(key, 0), 6)
         res = encoder.transform(np.array([0, 1, -1, np.nan]))
         self.assertAlmostEqual(res[0, 0], -0.251171, 6)
         self.assertAlmostEqual(res[1, 0], 0.538744, 6)

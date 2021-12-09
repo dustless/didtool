@@ -60,7 +60,7 @@ def handle_categorical_value(arr):
     def _convert_to_str(s):
         try:
             return str(int(s))
-        except:
+        except Exception as e:
             return str(s)
 
     res = [_convert_to_str(s) for s in arr]
