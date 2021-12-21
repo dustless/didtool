@@ -1,5 +1,4 @@
 # coding: utf-8
-import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold, train_test_split
 
@@ -127,20 +126,16 @@ def split_data_stacking(data, oot_mask, n_fold=5, random_state=None,
         - -1: oot data set
         - [0, n_fold): k-fold of training data set
     """
-    train_data = data[~oot_mask]
+    data.reset_index(drop=True, inplace=True)
+    train_index = data[~oot_mask].index
     k_fold = KFold(n_splits=n_fold, shuffle=True,
                    random_state=random_state)
     k_fold_index = []
-    for _, indexes in k_fold.split(train_data):
+    for _, indexes in k_fold.split(train_index):
         k_fold_index.append(indexes)
 
-    train_data.reset_index(inplace=True)
-    train_data.loc[:, group_col] = -1
+    data.loc[:, group_col] = -1
     for k in range(0, n_fold):
-        train_data.loc[k_fold_index[k], group_col] = k
+        data.loc[train_index[k_fold_index[k]], group_col] = k
 
-    data.reset_index(inplace=True)
-    data = pd.merge(data, train_data[["index", group_col]],
-                    how="left", on="index")
-    data[group_col] = data[group_col].fillna(-1).astype(np.int)
-    return data.drop("index", axis=1)
+    return data
