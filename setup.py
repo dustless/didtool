@@ -16,11 +16,11 @@ setuptools.setup(
     install_requires=[
         "seaborn>=0.10.1",
         "scikit-learn>=0.24.1",
-        "lightgbm>=3.1.0",
+        "lightgbm>=4.3.0",
         "sklearn2pmml>=0.65.0",
         "bayesian-optimization==1.2.0",
-        "pandas",
-        "numpy",
+        "pandas>=1.5.3",
+        "numpy>=1.20.3",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
