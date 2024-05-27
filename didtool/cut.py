@@ -137,7 +137,7 @@ def dt_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
     """
     x = to_ndarray(x)
     target = to_ndarray(target)
-    mask = np.isnan(x)
+    mask = pd.isnull(x)
 
     tree = DecisionTreeClassifier(
         min_samples_leaf=min_bin,
@@ -194,7 +194,7 @@ def lgb_cut(x, target, n_bins=DEFAULT_BINS, nan=-1, min_bin=0.01,
     """
     x = to_ndarray(x)
     target = to_ndarray(target)
-    mask = np.isnan(x)
+    mask = pd.isnull(x)
     min_child_samples = math.ceil(min_bin * len(x))
 
     tree = lightgbm.LGBMClassifier(
@@ -272,7 +272,7 @@ def chi_square_cut(x, target, n_bins=DEFAULT_BINS, cf=0.1, nan=-1,
     # 去除nan，单独分箱
     x = to_ndarray(x)
     target = to_ndarray(target)
-    mask = np.isnan(x)
+    mask = pd.isnull(x)
     df = pd.DataFrame({'feature': x[~mask], 'label': target[~mask]})
 
     # 对变量按属性值从小到大排序

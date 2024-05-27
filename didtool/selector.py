@@ -240,10 +240,13 @@ class Selector:
                                  test_size=0.2, stratify=self.label,
                                  random_state=i)
 
+            # 使用 early_stopping 回调函数
+            early_stopping_callback = lgb.early_stopping(stopping_rounds=20, verbose=False)
+
             # Train the model with early stopping
             model.fit(train_features, train_labels, eval_metric='logloss',
                       eval_set=[(valid_features, valid_labels)],
-                      early_stopping_rounds=20, verbose=-1)
+                      callbacks=[early_stopping_callback])
 
             # Clean up memory
             gc.enable()
