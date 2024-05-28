@@ -180,13 +180,16 @@ class LGBModelSingle:
             (trans_train_data, train_data[self.target]),
             (trans_val_data, val_data[self.target])
         ]
+
+        # 使用 early_stopping 回调函数
+        early_stopping_callback = lgb.early_stopping(stopping_rounds=early_stopping_rounds, verbose=verbose)
+
         self.pipeline[-1].fit(
             trans_train_data,
             train_data[self.target],
-            early_stopping_rounds=early_stopping_rounds,
             eval_set=eval_set,
             eval_metric=eval_metric,
-            verbose=verbose
+            callbacks=[early_stopping_callback]
         )
 
         imp_score = self.model.feature_importances_
@@ -545,13 +548,15 @@ class LGBModelStacking:
                 (trans_train_k, train_k[self.target]),
                 (trans_val_k, val_k[self.target])
             ]
+
+            # 使用 early_stopping 回调函数
+            early_stopping_callback = lgb.early_stopping(stopping_rounds=early_stopping_rounds, verbose=verbose)
             self.pipelines[k][-1].fit(
                 trans_train_k,
                 train_k[self.target],
-                early_stopping_rounds=early_stopping_rounds,
                 eval_set=eval_set,
                 eval_metric=eval_metric,
-                verbose=verbose
+                callbacks=[early_stopping_callback]
             )
 
             # append feature importance of model k
